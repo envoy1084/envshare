@@ -317,6 +317,8 @@ pub struct NetworkDriver {
     outbound: HashMap<OutboundRequestId, oneshot::Sender<Result<TransferResponse, NetworkError>>>,
     inbound: HashMap<InboundRequestId, ResponseChannel<TransferResponse>>,
     inbound_protocol_ids: HashMap<request_response::InboundRequestId, InboundRequestId>,
+    inbound_confirmations:
+        HashMap<request_response::InboundRequestId, oneshot::Sender<Result<(), NetworkError>>>,
     next_inbound_id: u64,
     max_discovery_results: usize,
     lan: Option<LanDiscovery>,
@@ -382,6 +384,7 @@ impl NetworkDriver {
                 outbound: HashMap::new(),
                 inbound: HashMap::new(),
                 inbound_protocol_ids: HashMap::new(),
+                inbound_confirmations: HashMap::new(),
                 next_inbound_id: 1,
                 max_discovery_results: config.max_discovery_results,
                 lan,
@@ -410,6 +413,7 @@ impl NetworkDriver {
         self.outbound.clear();
         self.inbound.clear();
         self.inbound_protocol_ids.clear();
+        self.inbound_confirmations.clear();
     }
 
     fn handle_command(&mut self, command: Command) {
@@ -450,20 +454,33 @@ impl NetworkDriver {
                 response,
                 result,
             } => {
-                let outcome = self
-                    .inbound
-                    .remove(&request_id)
+                let protocol_id =
+                    self.inbound_protocol_ids
+                        .iter()
+                        .find_map(|(protocol_id, application_id)| {
+                            (*application_id == request_id).then_some(*protocol_id)
+                        });
+                let outcome = protocol_id
+                    .zip(self.inbound.remove(&request_id))
                     .ok_or(NetworkError::Response)
-                    .and_then(|channel| {
+                    .and_then(|(protocol_id, channel)| {
                         self.swarm
                             .behaviour_mut()
                             .transfer
                             .send_response(channel, response)
+                            .map(|()| protocol_id)
                             .map_err(|_| NetworkError::Response)
                     });
-                self.inbound_protocol_ids
-                    .retain(|_, application_id| *application_id != request_id);
-                let _ = result.send(outcome);
+                match outcome {
+                    Ok(protocol_id) => {
+                        self.inbound_confirmations.insert(protocol_id, result);
+                    }
+                    Err(error) => {
+                        self.inbound_protocol_ids
+                            .retain(|_, application_id| *application_id != request_id);
+                        let _ = result.send(Err(error));
+                    }
+                }
             }
             Command::Discovery(command) => self.handle_discovery_command(command),
         }
@@ -585,8 +602,18 @@ impl NetworkDriver {
                     let _ = result.send(Err(NetworkError::Request));
                 }
             }
-            request_response::Event::InboundFailure { request_id, .. }
-            | request_response::Event::ResponseSent { request_id, .. } => {
+            request_response::Event::InboundFailure { request_id, .. } => {
+                if let Some(confirmation) = self.inbound_confirmations.remove(&request_id) {
+                    let _ = confirmation.send(Err(NetworkError::Response));
+                }
+                if let Some(application_id) = self.inbound_protocol_ids.remove(&request_id) {
+                    self.inbound.remove(&application_id);
+                }
+            }
+            request_response::Event::ResponseSent { request_id, .. } => {
+                if let Some(confirmation) = self.inbound_confirmations.remove(&request_id) {
+                    let _ = confirmation.send(Ok(()));
+                }
                 if let Some(application_id) = self.inbound_protocol_ids.remove(&request_id) {
                     self.inbound.remove(&application_id);
                 }
