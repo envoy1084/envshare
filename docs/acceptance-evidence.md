@@ -7,8 +7,8 @@ directly demonstrates the criterion. `External` means repository work is present
 but the criterion requires an independent reviewer or deployed infrastructure and
 is not claimed complete.
 
-The current local qualification commit is
-`d4492b48dab6313d915554b3a8504b864b4b2deb`. The released `v0.1.0` commit is
+The current qualification code commit is
+`502885f3bb5e3568065dc6584a29e8607aeefd4a`. The released `v0.1.0` commit is
 `69d312326dc5af398164f280ca5eaa3beac074b2`.
 
 ## Functional
@@ -67,7 +67,7 @@ The current local qualification commit is
 | Capacity and availability alerts are active | External | Versioned Prometheus rules and a dashboard exist under [`deploy/monitoring`](../deploy/monitoring), but alert routing must be activated and exercised by an operator in staging. |
 | Identity backup and restore is tested | External | Stable identity round-trip tests and a restore procedure exist; an isolated deployed-host restore record is still required. |
 | Docker and systemd deployment docs are tested from a clean VPS | External | Hardened assets and validation commands exist, but no clean public VPS qualification record is attached. |
-| Release binaries and images are signed | Partial | Every `v0.1.0` binary/archive/installer has a GitHub artifact attestation. No prebuilt container image is published, so image signing is not claimed. |
+| Release binaries and images are signed | Verified | Every `v0.1.0` binary/archive/installer has a GitHub artifact attestation. The public `ghcr.io/envoy1084/envshare-node:0.1.0` image index is keylessly signed and has GitHub provenance; both records verify against digest `sha256:98c113145d657bfc46b045ecf19c85cb9d85baeae438491a02c91f3b27f120cd`. |
 | Incident owner and vulnerability path are published | Verified | [`SECURITY.md`](../SECURITY.md) and the [incident runbook](operations.md). |
 
 ## Qualification record
@@ -81,7 +81,7 @@ The current local qualification commit is
 | NAT/TCP | Privileged isolated Linux namespace gate passed with UDP blocked, TCP DNAT/SNAT, and 25 ms latency, as recorded in [quality gates](quality-gates.md). |
 | Overload | macOS and constrained Linux relay/discovery smoke runs passed with bounded acceptance and cleanup, as recorded in [load testing](load-testing.md). |
 | Cross-platform | The focused Linux/macOS/Windows [CI run](https://github.com/envoy1084/envshare/actions/runs/32568722371) passed for the released commit. |
-| Distribution | The [release workflow](https://github.com/envoy1084/envshare/actions/runs/32568975384) passed and published the [`v0.1.0` release](https://github.com/envoy1084/envshare/releases/tag/v0.1.0). A hosted macOS install returned `envshare 0.1.0`; archive checksums and GitHub attestations verified. |
+| Distribution | The [release workflow](https://github.com/envoy1084/envshare/actions/runs/32568975384) passed and published the [`v0.1.0` release](https://github.com/envoy1084/envshare/releases/tag/v0.1.0). A hosted macOS install returned `envshare 0.1.0`; archive checksums and GitHub attestations verified. The [container workflow](https://github.com/envoy1084/envshare/actions/runs/32570431221) published the signed index for `linux/amd64` and `linux/arm64`; both hosted images returned `envshare-node 0.1.0`, both SPDX 2.3 SBOMs were readable, and GitHub provenance plus the Cosign transparency-log signature verified against the immutable index digest. |
 | Release dry-run | `scripts/release-check.sh` passed on the current qualification commit. |
 | Soak and external review | Not complete; these remain explicit release-maturity blockers. |
 
