@@ -7,7 +7,7 @@ use code::ShareCode;
 use crypto::derive_root;
 use network::{
     CandidatePolicy, CandidateSet, DiscoveryNamespace, NetworkConfig, NetworkDriver, NetworkEvent,
-    PeerId, PrivacyMode, dispatch_discovery, identity,
+    PeerId, PrivacyMode, dispatch_discovery, identity, resolve_discovered_peer,
 };
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -131,7 +131,7 @@ async fn discover_routes(
                 Some(NetworkEvent::DiscoveryResults { node, peers }) => {
                     pending_nodes.remove(&node);
                     for peer in peers {
-                        candidates.insert(peer);
+                        candidates.insert(resolve_discovered_peer(peer).await);
                     }
                 }
                 Some(NetworkEvent::DiscoveryFailed { node }) => {
@@ -139,7 +139,7 @@ async fn discover_routes(
                 }
                 Some(NetworkEvent::LanDiscovered { peers }) => {
                     for peer in peers {
-                        candidates.insert(peer);
+                        candidates.insert(resolve_discovered_peer(peer).await);
                     }
                 }
                 Some(_) => {}

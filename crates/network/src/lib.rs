@@ -6,6 +6,7 @@ mod behaviour;
 mod codec;
 mod config;
 mod discovery;
+mod dns;
 mod driver;
 mod error;
 mod lan;
@@ -15,6 +16,7 @@ pub use discovery::{
     CandidatePolicy, CandidateSet, DiscoveredPeer, DiscoveryNamespace, DiscoveryNode,
     DiscoveryProvider, PrivacyMode, RouteCandidate, RouteKind, dispatch_discovery,
     dispatch_registration, dispatch_unregistration, maintain_registrations, renewal_delay,
+    resolve_discovered_peer,
 };
 pub use driver::{InboundRequestId, NetworkClient, NetworkDriver, NetworkEvent};
 pub use error::NetworkError;

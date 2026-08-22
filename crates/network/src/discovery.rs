@@ -11,7 +11,7 @@ use futures::{StreamExt, stream};
 use libp2p::multiaddr::Protocol;
 use tokio_util::sync::CancellationToken;
 
-use crate::{Multiaddr, NetworkError, PeerId};
+use crate::{Multiaddr, NetworkError, PeerId, dns};
 
 const HEX: &[u8; 16] = b"0123456789abcdef";
 
@@ -50,6 +50,24 @@ pub struct DiscoveredPeer {
     pub peer: PeerId,
     /// Signed candidate addresses, truncated to the configured result bound.
     pub addresses: Vec<Multiaddr>,
+}
+
+/// Resolves bounded DNS addresses from an untrusted signed peer record.
+///
+/// Callers must pass the returned record through [`CandidateSet`], which applies
+/// private-address and transport policy to the resolved IP routes. Failed DNS
+/// addresses are discarded without rejecting otherwise valid routes.
+pub async fn resolve_discovered_peer(discovered: DiscoveredPeer) -> DiscoveredPeer {
+    let peer = discovered.peer;
+    let addresses = stream::iter(discovered.addresses.into_iter().take(8))
+        .map(dns::resolve)
+        .buffered(4)
+        .filter_map(|result| async move { result.ok() })
+        .flat_map(stream::iter)
+        .take(16)
+        .collect()
+        .await;
+    DiscoveredPeer { peer, addresses }
 }
 
 /// One configured member of the federated discovery set.
@@ -339,7 +357,11 @@ fn classify_address(
         || protocols.iter().any(|protocol| {
             matches!(
                 protocol,
-                Protocol::Memory(_)
+                Protocol::Dns(_)
+                    | Protocol::Dns4(_)
+                    | Protocol::Dns6(_)
+                    | Protocol::Dnsaddr(_)
+                    | Protocol::Memory(_)
                     | Protocol::Unix(_)
                     | Protocol::Onion(_, _)
                     | Protocol::Onion3(_)
@@ -478,6 +500,8 @@ mod tests {
                 quic.clone(),
                 quic,
                 wrong_identity,
+                "/dns4/example.com/tcp/2".parse()?,
+                format!("/dns4/example.com/tcp/2/p2p/{relay_peer}/p2p-circuit").parse()?,
                 "/memory/9".parse()?,
                 "/ip4/127.0.0.1/tcp/2".parse()?,
             ],
@@ -487,6 +511,22 @@ mod tests {
         assert_eq!(routes[0].kind, RouteKind::PublicQuic);
         assert_eq!(routes[1].kind, RouteKind::PublicTcp);
         assert_eq!(routes[2].kind, RouteKind::Relay);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn resolved_dns_routes_are_reclassified_by_ip_policy() -> Result<(), Box<dyn Error>> {
+        let peer = PeerId::random();
+        let discovered = resolve_discovered_peer(DiscoveredPeer {
+            peer,
+            addresses: vec!["/dns4/localhost/tcp/4001".parse()?],
+        })
+        .await;
+        let mut candidates = CandidateSet::new(CandidatePolicy::default())?;
+
+        candidates.insert(discovered);
+
+        assert!(candidates.into_ranked().is_empty());
         Ok(())
     }
 

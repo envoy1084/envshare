@@ -46,6 +46,10 @@ resolver rather than rust-libp2p's optional DNS transport while that transport i
 coupled to an affected Hickory release line. Resolved addresses remain bound to
 the expected `/p2p/<peer-id>`, so redirected DNS cannot authenticate the wrong
 node.
+DNS expansion has a five-second lookup deadline, retains at most eight IPs, and
+does not support recursive `dnsaddr` TXT expansion. Untrusted discovery records
+are resolved before candidate policy runs; unresolved DNS protocols are rejected
+defensively so a hostname cannot bypass private-address or relay-only policy.
 
 ## One-time invariant
 

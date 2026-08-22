@@ -18,6 +18,7 @@ use crate::{
     DiscoveredPeer, DiscoveryNamespace, DiscoveryProvider, NetworkConfig, NetworkError,
     PrivacyMode,
     behaviour::{Behaviour, BehaviourEvent},
+    dns,
     lan::{LanDiscovery, LanEvent},
 };
 
@@ -107,17 +108,17 @@ pub enum NetworkEvent {
 
 enum Command {
     Listen {
-        address: Multiaddr,
+        addresses: Vec<Multiaddr>,
         result: oneshot::Sender<Result<(), NetworkError>>,
     },
     Dial {
         peer: PeerId,
-        address: Multiaddr,
+        addresses: Vec<Multiaddr>,
         result: oneshot::Sender<Result<(), NetworkError>>,
     },
     Request {
         peer: PeerId,
-        address: Multiaddr,
+        addresses: Vec<Multiaddr>,
         request: TransferRequest,
         result: oneshot::Sender<Result<TransferResponse, NetworkError>>,
     },
@@ -136,14 +137,14 @@ enum DiscoveryCommand {
     },
     Register {
         node: PeerId,
-        node_address: Multiaddr,
+        node_addresses: Vec<Multiaddr>,
         namespace: DiscoveryNamespace,
         ttl_seconds: u64,
         result: oneshot::Sender<Result<(), NetworkError>>,
     },
     Discover {
         node: PeerId,
-        node_address: Multiaddr,
+        node_addresses: Vec<Multiaddr>,
         namespace: DiscoveryNamespace,
         result: oneshot::Sender<Result<(), NetworkError>>,
     },
@@ -174,8 +175,11 @@ impl NetworkClient {
     ///
     /// Returns a bounded API or listen error.
     pub async fn listen(&self, address: Multiaddr) -> Result<(), NetworkError> {
+        let addresses = dns::resolve(address)
+            .await
+            .map_err(|_| NetworkError::Listen)?;
         let (result, receiver) = oneshot::channel();
-        self.send(Command::Listen { address, result }).await?;
+        self.send(Command::Listen { addresses, result }).await?;
         receiver.await.map_err(|_| NetworkError::TaskStopped)?
     }
 
@@ -185,10 +189,11 @@ impl NetworkClient {
     ///
     /// Returns if the command cannot be queued or the dial cannot start.
     pub async fn dial(&self, peer: PeerId, address: Multiaddr) -> Result<(), NetworkError> {
+        let addresses = dns::resolve(address).await?;
         let (result, receiver) = oneshot::channel();
         self.send(Command::Dial {
             peer,
-            address,
+            addresses,
             result,
         })
         .await?;
@@ -206,10 +211,11 @@ impl NetworkClient {
         address: Multiaddr,
         request: TransferRequest,
     ) -> Result<TransferResponse, NetworkError> {
+        let addresses = dns::resolve(address).await?;
         let (result, receiver) = oneshot::channel();
         self.send(Command::Request {
             peer,
-            address,
+            addresses,
             request,
             result,
         })
@@ -264,10 +270,11 @@ impl DiscoveryProvider for NetworkClient {
         namespace: DiscoveryNamespace,
         ttl_seconds: u64,
     ) -> Result<(), NetworkError> {
+        let node_addresses = dns::resolve(node_address).await?;
         let (result, receiver) = oneshot::channel();
         self.send(Command::Discovery(DiscoveryCommand::Register {
             node,
-            node_address,
+            node_addresses,
             namespace,
             ttl_seconds,
             result,
@@ -282,10 +289,11 @@ impl DiscoveryProvider for NetworkClient {
         node_address: Multiaddr,
         namespace: DiscoveryNamespace,
     ) -> Result<(), NetworkError> {
+        let node_addresses = dns::resolve(node_address).await?;
         let (result, receiver) = oneshot::channel();
         self.send(Command::Discovery(DiscoveryCommand::Discover {
             node,
-            node_address,
+            node_addresses,
             namespace,
             result,
         }))
@@ -418,30 +426,32 @@ impl NetworkDriver {
 
     fn handle_command(&mut self, command: Command) {
         match command {
-            Command::Listen { address, result } => {
-                let outcome = self
-                    .swarm
-                    .listen_on(address)
-                    .map(|_| ())
-                    .map_err(|_| NetworkError::Listen);
+            Command::Listen { addresses, result } => {
+                let listening = addresses
+                    .into_iter()
+                    .filter_map(|address| self.swarm.listen_on(address).ok())
+                    .count();
+                let outcome = (listening > 0).then_some(()).ok_or(NetworkError::Listen);
                 let _ = result.send(outcome);
             }
             Command::Dial {
                 peer,
-                address,
+                addresses,
                 result,
             } => {
-                let options = DialOpts::peer_id(peer).addresses(vec![address]).build();
+                let options = DialOpts::peer_id(peer).addresses(addresses).build();
                 let outcome = self.swarm.dial(options).map_err(|_| NetworkError::Dial);
                 let _ = result.send(outcome);
             }
             Command::Request {
                 peer,
-                address,
+                addresses,
                 request,
                 result,
             } => {
-                self.swarm.add_peer_address(peer, address);
+                for address in addresses {
+                    self.swarm.add_peer_address(peer, address);
+                }
                 let request_id = self
                     .swarm
                     .behaviour_mut()
@@ -494,12 +504,14 @@ impl NetworkDriver {
             }
             DiscoveryCommand::Register {
                 node,
-                node_address,
+                node_addresses,
                 namespace,
                 ttl_seconds,
                 result,
             } => {
-                self.swarm.add_peer_address(node, node_address);
+                for address in node_addresses {
+                    self.swarm.add_peer_address(node, address);
+                }
                 let outcome = if ttl_seconds == 0 || ttl_seconds > 86_400 {
                     Err(NetworkError::Configuration)
                 } else {
@@ -515,11 +527,13 @@ impl NetworkDriver {
             }
             DiscoveryCommand::Discover {
                 node,
-                node_address,
+                node_addresses,
                 namespace,
                 result,
             } => {
-                self.swarm.add_peer_address(node, node_address);
+                for address in node_addresses {
+                    self.swarm.add_peer_address(node, address);
+                }
                 let outcome = namespace.to_rendezvous().map(|namespace| {
                     self.swarm.behaviour_mut().rendezvous.discover(
                         Some(namespace),
