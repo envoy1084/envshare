@@ -3,18 +3,18 @@
 use futures::StreamExt;
 use libp2p::{
     Multiaddr, PeerId, Swarm, SwarmBuilder, identify, memory_connection_limits, ping, relay,
-    rendezvous,
+    request_response,
     swarm::{NetworkBehaviour, SwarmEvent},
 };
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use crate::{NodeConfig, NodeError};
+use crate::{NodeConfig, NodeError, rendezvous};
 
 #[derive(NetworkBehaviour)]
 struct Behaviour {
     relay: relay::Behaviour,
-    rendezvous: rendezvous::server::Behaviour,
+    rendezvous: rendezvous::Behaviour,
     identify: identify::Behaviour,
     ping: ping::Behaviour,
     connection_limits: libp2p::connection_limits::Behaviour,
@@ -89,6 +89,7 @@ pub struct NodeServer {
     swarm: Swarm<Behaviour>,
     listen_addresses: Vec<Multiaddr>,
     events: mpsc::Sender<NodeEvent>,
+    discovery: rendezvous::Store,
 }
 
 impl NodeServer {
@@ -126,6 +127,7 @@ impl NodeServer {
                 swarm,
                 listen_addresses: config.listen_addresses.clone(),
                 events,
+                discovery: rendezvous::Store::new(config),
             },
         ))
     }
@@ -141,10 +143,17 @@ impl NodeServer {
                 .listen_on(address)
                 .map_err(|_| NodeError::Listen)?;
         }
+        let mut expiry = tokio::time::interval(std::time::Duration::from_secs(1));
+        expiry.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             tokio::select! {
                 () = cancellation.cancelled() => return Ok(()),
                 event = self.swarm.select_next_some() => self.handle_event(event),
+                _ = expiry.tick() => {
+                    for peer in self.discovery.expire(std::time::Instant::now()) {
+                        let _ = self.events.try_send(NodeEvent::DiscoveryUnregistered { peer });
+                    }
+                }
             }
         }
     }
@@ -187,37 +196,55 @@ impl NodeServer {
                 relay::Event::ReservationClosed { src_peer_id }
                 | relay::Event::ReservationTimedOut { src_peer_id },
             )) => Some(NodeEvent::ReservationClosed { peer: src_peer_id }),
-            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
-                rendezvous::server::Event::PeerRegistered { peer, .. },
-            )) => Some(NodeEvent::DiscoveryRegistered { peer }),
-            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
-                rendezvous::server::Event::PeerUnregistered { peer, .. },
-            )) => Some(NodeEvent::DiscoveryUnregistered { peer }),
-            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
-                rendezvous::server::Event::RegistrationExpired(registration),
-            )) => Some(NodeEvent::DiscoveryUnregistered {
-                peer: registration.record.peer_id(),
-            }),
-            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
-                rendezvous::server::Event::DiscoverServed {
-                    enquirer,
-                    registrations,
-                },
-            )) => Some(NodeEvent::DiscoveryServed {
-                peer: enquirer,
-                result_count: registrations.len(),
-            }),
-            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
-                rendezvous::server::Event::DiscoverNotServed { enquirer, .. },
-            )) => Some(NodeEvent::DiscoveryRejected { peer: enquirer }),
-            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
-                rendezvous::server::Event::PeerNotRegistered { peer, .. },
-            )) => Some(NodeEvent::DiscoveryRejected { peer }),
+            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(event)) => {
+                self.handle_discovery_event(event)
+            }
             _ => None,
         };
         if let Some(event) = event {
             let _ = self.events.try_send(event);
         }
+    }
+
+    fn handle_discovery_event(&mut self, event: rendezvous::ProtocolEvent) -> Option<NodeEvent> {
+        let request_response::Event::Message {
+            peer,
+            message:
+                request_response::Message::Request {
+                    request, channel, ..
+                },
+            ..
+        } = event
+        else {
+            return None;
+        };
+        for expired_peer in self.discovery.expire(std::time::Instant::now()) {
+            let _ = self
+                .events
+                .try_send(NodeEvent::DiscoveryUnregistered { peer: expired_peer });
+        }
+        let rendezvous::Handled { response, event } =
+            self.discovery
+                .handle(peer, request, std::time::Instant::now());
+        if let Some(response) = response
+            && self
+                .swarm
+                .behaviour_mut()
+                .rendezvous
+                .send_response(channel, response)
+                .is_err()
+        {
+            return Some(NodeEvent::DiscoveryRejected { peer });
+        }
+        Some(match event {
+            rendezvous::Event::Registered { peer } => NodeEvent::DiscoveryRegistered { peer },
+            rendezvous::Event::Unregistered { peer } => NodeEvent::DiscoveryUnregistered { peer },
+            rendezvous::Event::Served { peer, count } => NodeEvent::DiscoveryServed {
+                peer,
+                result_count: count,
+            },
+            rendezvous::Event::Rejected { peer } => NodeEvent::DiscoveryRejected { peer },
+        })
     }
 }
 
@@ -243,14 +270,7 @@ fn build_behaviour(
         .with_max_established_per_peer(Some(config.max_connections_per_peer));
     Behaviour {
         relay: relay::Behaviour::new(peer_id, relay_config),
-        rendezvous: rendezvous::server::Behaviour::new(
-            rendezvous::server::Config::default()
-                .with_min_ttl(config.discovery_min_ttl_seconds)
-                .with_max_ttl(config.discovery_max_ttl_seconds)
-                .with_max_registration_per_peer(config.discovery_registrations_per_peer)
-                .with_max_registration_total(config.discovery_registrations_total)
-                .with_max_stored_cookies(config.discovery_cookies),
-        ),
+        rendezvous: rendezvous::behaviour(),
         identify: identify::Behaviour::new(
             identify::Config::new("/envshare/node/1.0.0".to_owned(), keypair.public())
                 .with_agent_version(format!("envshare-node/{}", env!("CARGO_PKG_VERSION"))),

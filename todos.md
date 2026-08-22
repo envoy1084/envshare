@@ -77,7 +77,7 @@ tests, documentation, and relevant verification commands pass.
 ## Phase 4 — Federated discovery
 
 - [x] Implement the discovery abstraction and bounded Rendezvous client.
-- [ ] Implement patched, bounded Rendezvous server behavior with namespace,
+- [x] Implement patched, bounded Rendezvous server behavior with namespace,
       registration, cookie, address, TTL, global, per-peer, and rate limits.
 - [x] Implement opaque-room registration, renewal, unregister, parallel multi-node
       discovery, validation, deduplication, malicious-result handling, and bounded

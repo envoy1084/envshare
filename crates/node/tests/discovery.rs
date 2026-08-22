@@ -13,6 +13,7 @@ use tokio_util::sync::CancellationToken;
 async fn opaque_registration_is_discovered_and_unregistered() -> Result<(), Box<dyn Error>> {
     let config = NodeConfig {
         listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
+        discovery_allow_private_addresses: true,
         ..NodeConfig::default()
     };
     let (node_peer, mut node_events, node) =
@@ -95,6 +96,7 @@ async fn expired_registration_is_not_returned() -> Result<(), Box<dyn Error>> {
         listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
         discovery_min_ttl_seconds: 1,
         discovery_max_ttl_seconds: 1,
+        discovery_allow_private_addresses: true,
         ..NodeConfig::default()
     };
     let (node_peer, mut node_events, node) =
@@ -138,6 +140,9 @@ async fn global_registration_limit_rejects_overload() -> Result<(), Box<dyn Erro
         listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
         discovery_registrations_per_peer: 1,
         discovery_registrations_total: 1,
+        discovery_registrations_per_namespace: 1,
+        discovery_results: 1,
+        discovery_allow_private_addresses: true,
         ..NodeConfig::default()
     };
     let (node_peer, mut node_events, node) =

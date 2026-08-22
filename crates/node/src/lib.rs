@@ -5,6 +5,7 @@
 mod config;
 mod identity;
 mod relay;
+mod rendezvous;
 
 pub use config::NodeConfig;
 pub use identity::{generate_identity, load_identity, save_identity};

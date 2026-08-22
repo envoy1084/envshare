@@ -2369,11 +2369,13 @@ name = "node"
 version = "0.1.0-alpha.1"
 dependencies = [
  "anyhow",
+ "async-trait",
  "clap",
  "core",
  "futures",
  "libp2p",
  "network",
+ "prost",
  "protocol",
  "serde_json",
  "tempfile",

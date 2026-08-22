@@ -22,6 +22,14 @@ fn binary() -> &'static str {
     env!("CARGO_BIN_EXE_envshare")
 }
 
+fn local_node_config() -> Result<NodeConfig, Box<dyn Error>> {
+    Ok(NodeConfig {
+        listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
+        discovery_allow_private_addresses: true,
+        ..NodeConfig::default()
+    })
+}
+
 #[test]
 fn invalid_code_never_echoes_the_supplied_value() -> Result<(), Box<dyn Error>> {
     let sentinel = "SECRET-SENTINEL-NOT-A-CODE";
@@ -213,10 +221,7 @@ fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), B
 #[test]
 fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
     let runtime = tokio::runtime::Runtime::new()?;
-    let node_config = NodeConfig {
-        listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
-        ..NodeConfig::default()
-    };
+    let node_config = local_node_config()?;
     let (node_peer, mut events, node) =
         NodeServer::new(network::identity::Keypair::generate_ed25519(), &node_config)?;
     let cancellation = CancellationToken::new();
@@ -264,10 +269,7 @@ fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
 fn federated_send_waits_for_registration_and_receives_without_route_arguments()
 -> Result<(), Box<dyn Error>> {
     let runtime = tokio::runtime::Runtime::new()?;
-    let config = NodeConfig {
-        listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
-        ..NodeConfig::default()
-    };
+    let config = local_node_config()?;
     let (node_peer, mut node_events, node) =
         NodeServer::new(network::identity::Keypair::generate_ed25519(), &config)?;
     let node_cancel = CancellationToken::new();

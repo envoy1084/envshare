@@ -17,6 +17,15 @@ observe metadata, censor, return false candidates, or disappear. It cannot deriv
 the capability or authenticate and decrypt the payload. Multiple nodes improve
 availability; they do not make the system anonymous.
 
+Clients retain the standard libp2p Rendezvous v1 wire protocol. Public nodes use
+an Envshare-specific inbound implementation because the generic server cannot
+validate application namespaces and signed address records before storage. The
+node accepts only the fixed `envshare-v1-` opaque namespace shape and bounds TTL,
+record bytes, addresses, registrations per peer/namespace/globally, response
+results, cookies, per-peer request rates, and the rate-bucket map. Public defaults
+reject loopback, unspecified, link-local, multicast, private, and mismatched-peer
+routes; private self-hosted nodes must opt in to local addresses explicitly.
+
 ## Workspace boundaries
 
 - `code`: capability generation, canonical encoding, parsing and secret
