@@ -126,7 +126,7 @@ tests, documentation, and relevant verification commands pass.
 - [x] Add Homebrew formula generation and document package-manager installation.
 - [x] Add release dry-run, installer smoke tests, clean-machine tests, and rollback
       documentation.
-- [ ] Complete user, protocol, self-hosting, operations, release, troubleshooting,
+- [x] Complete user, protocol, self-hosting, operations, release, troubleshooting,
       privacy, and security documentation.
 - [ ] Run license, advisory, supply-chain, fuzz, coverage, cross-platform, NAT,
       overload, soak, and release-candidate gates.

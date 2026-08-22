@@ -82,9 +82,14 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 
 ## Architecture and protocol
 
+- [Documentation index](docs/README.md)
+- [User guide](docs/user-guide.md)
 - [Architecture overview](docs/architecture.md)
 - [Threat model](docs/threat-model.md)
 - [Secret output policy](docs/secret-output-policy.md)
+- [Security guide](docs/security.md)
+- [Privacy and data handling](docs/privacy.md)
+- [Troubleshooting](docs/troubleshooting.md)
 - [Node identity operations](docs/node-identity.md)
 - [Node configuration](docs/node-configuration.md)
 - [Node deployment](docs/deployment.md)
