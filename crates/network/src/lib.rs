@@ -11,4 +11,5 @@ mod error;
 pub use config::NetworkConfig;
 pub use driver::{InboundRequestId, NetworkClient, NetworkDriver, NetworkEvent};
 pub use error::NetworkError;
+pub use libp2p::identity;
 pub use libp2p::{Multiaddr, PeerId};

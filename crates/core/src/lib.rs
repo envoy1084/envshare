@@ -2,10 +2,12 @@
 
 #![forbid(unsafe_code)]
 
+mod direct;
 mod error;
 mod receiver;
 mod sender;
 
+pub use direct::{DirectReceiver, DirectSender, PendingDirectOffer};
 pub use error::CoreError;
 pub use receiver::{ReceiverSession, VerifiedOffer};
 pub use sender::{OfferEntropy, OsEntropy, SenderActor, SenderState};

@@ -22,6 +22,8 @@ getrandom.workspace = true
 network.workspace = true
 protocol.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
 zeroize.workspace = true
 
 [lints]

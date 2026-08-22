@@ -49,7 +49,7 @@ tests, documentation, and relevant verification commands pass.
       Identify, Ping, connection limits, and the custom request-response codec.
 - [x] Implement a bounded command/event API around the single-owner network loop,
       cancellation, timeouts, backpressure, and graceful shutdown.
-- [ ] Implement direct sender and receiver flows using explicit multiaddresses.
+- [x] Implement direct sender and receiver flows using explicit multiaddresses.
 - [ ] Implement bounded input reading, raw dotenv preservation, selected-key
       normalization, metadata validation, and secret-safe diagnostics.
 - [ ] Implement atomic private file output on Unix and Windows, no-clobber by
