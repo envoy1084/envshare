@@ -27,7 +27,7 @@ federated discovery:
 
 ```console
 envshare-node key generate --output node.key
-envshare-node serve --identity node.key --listen /ip4/0.0.0.0/tcp/4001
+envshare-node serve --identity node.key --config node.toml
 
 envshare send .env --discovery-node <NODE_MULTIADDR_WITH_PEER_ID>
 envshare receive --discovery-node <NODE_MULTIADDR_WITH_PEER_ID> --output .env.shared
@@ -74,6 +74,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 - [Threat model](docs/threat-model.md)
 - [Secret output policy](docs/secret-output-policy.md)
 - [Node identity operations](docs/node-identity.md)
+- [Node configuration](docs/node-configuration.md)
 - [Command-line interface](docs/cli.md)
 - [Client configuration](docs/configuration.md)
 - [Protocol specification](protocol/protocol.md)

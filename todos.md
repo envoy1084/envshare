@@ -103,7 +103,7 @@ tests, documentation, and relevant verification commands pass.
 
 ## Phase 6 — Production node and operations
 
-- [ ] Implement validated node configuration with absolute safety ceilings.
+- [x] Implement validated node configuration with absolute safety ceilings.
 - [ ] Implement bounded per-IP/per-peer admission control and overload shedding.
 - [ ] Implement loopback health, readiness, graceful drain, and OpenMetrics
       endpoints with low-cardinality labels.

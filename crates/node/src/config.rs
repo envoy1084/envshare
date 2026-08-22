@@ -1,25 +1,37 @@
 //! Validated relay service bounds.
 
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
+use app_core::read_bounded;
 use libp2p::Multiaddr;
+use serde::{Deserialize, Deserializer};
+
+use crate::NodeError;
+
+const MAX_CONFIG_BYTES: usize = 256 * 1024;
+const MAX_LISTENERS: usize = 16;
+const MAX_PROCESS_MEMORY_BYTES: usize = 64_usize.saturating_mul(1024 * 1024 * 1024);
 
 /// Absolute safety ceilings for one relay node.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct NodeConfig {
     /// Transport addresses to bind.
+    #[serde(deserialize_with = "deserialize_multiaddresses")]
     pub listen_addresses: Vec<Multiaddr>,
     /// Maximum simultaneous reservations.
     pub max_reservations: usize,
     /// Maximum reservations owned by one peer.
     pub max_reservations_per_peer: usize,
     /// Reservation lifetime advertised to clients.
+    #[serde(deserialize_with = "deserialize_duration")]
     pub reservation_duration: Duration,
     /// Maximum simultaneous relay circuits.
     pub max_circuits: usize,
     /// Maximum circuits associated with one peer.
     pub max_circuits_per_peer: usize,
     /// Hard duration for one circuit.
+    #[serde(deserialize_with = "deserialize_duration")]
     pub max_circuit_duration: Duration,
     /// Hard byte count for one relayed circuit.
     pub max_circuit_bytes: u64,
@@ -99,26 +111,60 @@ impl Default for NodeConfig {
 }
 
 impl NodeConfig {
+    /// Loads a bounded TOML configuration from a regular file.
+    ///
+    /// # Errors
+    ///
+    /// Returns a generic configuration failure for I/O, decoding, unknown
+    /// fields, invalid multiaddresses, or bounds outside absolute ceilings.
+    pub fn load(path: &Path) -> Result<Self, NodeError> {
+        let file = std::fs::File::open(path).map_err(|_| NodeError::Configuration)?;
+        if !file
+            .metadata()
+            .map_err(|_| NodeError::Configuration)?
+            .is_file()
+        {
+            return Err(NodeError::Configuration);
+        }
+        let bytes = read_bounded(file, MAX_CONFIG_BYTES).map_err(|_| NodeError::Configuration)?;
+        let text = std::str::from_utf8(&bytes).map_err(|_| NodeError::Configuration)?;
+        let config: Self = toml::from_str(text).map_err(|_| NodeError::Configuration)?;
+        config
+            .validate()
+            .then_some(config)
+            .ok_or(NodeError::Configuration)
+    }
+
     pub(crate) fn validate(&self) -> bool {
         !self.listen_addresses.is_empty()
+            && self.listen_addresses.len() <= MAX_LISTENERS
             && self
                 .listen_addresses
                 .iter()
                 .all(|address| !address.is_empty())
             && self.max_reservations > 0
+            && self.max_reservations <= 4_096
             && self.max_reservations_per_peer > 0
+            && self.max_reservations_per_peer <= 64
             && self.max_reservations_per_peer <= self.max_reservations
             && !self.reservation_duration.is_zero()
+            && self.reservation_duration <= Duration::from_hours(24)
             && self.max_circuits > 0
+            && self.max_circuits <= 4_096
             && self.max_circuits_per_peer > 0
+            && self.max_circuits_per_peer <= 64
             && self.max_circuits_per_peer <= self.max_circuits
             && !self.max_circuit_duration.is_zero()
-            && self.max_circuit_bytes >= 1024
+            && self.max_circuit_duration <= Duration::from_hours(1)
+            && (1024..=1024 * 1024 * 1024).contains(&self.max_circuit_bytes)
             && self.max_connections > 0
+            && self.max_connections <= 8_192
             && self.max_connections_per_peer > 0
+            && self.max_connections_per_peer <= 128
             && self.max_connections_per_peer <= self.max_connections
             && self.max_process_memory_bytes >= 64 * 1024 * 1024
-            && self.event_capacity > 0
+            && self.max_process_memory_bytes <= MAX_PROCESS_MEMORY_BYTES
+            && (1..=8_192).contains(&self.event_capacity)
             && self.discovery_min_ttl_seconds > 0
             && self.discovery_min_ttl_seconds <= self.discovery_max_ttl_seconds
             && self.discovery_max_ttl_seconds <= 86_400
@@ -145,5 +191,79 @@ impl NodeConfig {
             && self.discovery_discover_requests_per_minute <= 240
             && self.discovery_rate_limit_peers > 0
             && self.discovery_rate_limit_peers <= 4_096
+    }
+}
+
+fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = String::deserialize(deserializer)?;
+    humantime::parse_duration(&value).map_err(serde::de::Error::custom)
+}
+
+fn deserialize_multiaddresses<'de, D>(deserializer: D) -> Result<Vec<Multiaddr>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Vec::<String>::deserialize(deserializer)?
+        .into_iter()
+        .map(|value| value.parse().map_err(serde::de::Error::custom))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn toml_is_strict_and_human_durations_are_parsed() -> Result<(), Box<dyn std::error::Error>> {
+        let config: NodeConfig = toml::from_str(
+            r#"
+listen_addresses = ["/ip4/127.0.0.1/tcp/0"]
+reservation_duration = "30m"
+max_circuit_duration = "45s"
+"#,
+        )?;
+
+        assert_eq!(config.reservation_duration, Duration::from_mins(30));
+        assert_eq!(config.max_circuit_duration, Duration::from_secs(45));
+        assert!(toml::from_str::<NodeConfig>("unknown = 1").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn absolute_safety_ceilings_cannot_be_disabled() {
+        let config = NodeConfig {
+            max_connections: 8_193,
+            ..NodeConfig::default()
+        };
+        assert!(!config.validate());
+
+        let config = NodeConfig {
+            max_circuit_bytes: 1024 * 1024 * 1024 + 1,
+            ..NodeConfig::default()
+        };
+        assert!(!config.validate());
+
+        let config = NodeConfig {
+            listen_addresses: vec![Multiaddr::empty(); MAX_LISTENERS + 1],
+            ..NodeConfig::default()
+        };
+        assert!(!config.validate());
+    }
+
+    #[test]
+    fn loader_accepts_regular_bounded_files_only() -> Result<(), Box<dyn std::error::Error>> {
+        let directory = tempfile::tempdir()?;
+        let path = directory.path().join("node.toml");
+        std::fs::write(&path, "listen_addresses = [\"/ip4/127.0.0.1/tcp/0\"]\n")?;
+
+        assert_eq!(NodeConfig::load(&path)?.listen_addresses.len(), 1);
+        assert!(matches!(
+            NodeConfig::load(directory.path()),
+            Err(NodeError::Configuration)
+        ));
+        Ok(())
     }
 }

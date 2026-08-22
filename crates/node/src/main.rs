@@ -55,8 +55,11 @@ struct ServeArgs {
     /// Stable Ed25519 identity file.
     #[arg(long)]
     identity: PathBuf,
+    /// Strict bounded node TOML configuration.
+    #[arg(long)]
+    config: Option<PathBuf>,
     /// TCP or QUIC multiaddress to bind; repeat for multiple listeners.
-    #[arg(long = "listen", required = true)]
+    #[arg(long = "listen")]
     listen_addresses: Vec<String>,
     /// Emit newline-delimited JSON operational events.
     #[arg(long)]
@@ -93,15 +96,19 @@ fn run_key(arguments: KeyArgs) -> Result<(), NodeError> {
 }
 
 async fn run_server(arguments: ServeArgs) -> Result<(), NodeError> {
-    let listen_addresses = arguments
-        .listen_addresses
-        .iter()
-        .map(|address| address.parse().map_err(|_| NodeError::Configuration))
-        .collect::<Result<Vec<_>, _>>()?;
-    let config = NodeConfig {
-        listen_addresses,
-        ..NodeConfig::default()
-    };
+    let mut config = arguments
+        .config
+        .as_deref()
+        .map(NodeConfig::load)
+        .transpose()?
+        .unwrap_or_default();
+    if !arguments.listen_addresses.is_empty() {
+        config.listen_addresses = arguments
+            .listen_addresses
+            .iter()
+            .map(|address| address.parse().map_err(|_| NodeError::Configuration))
+            .collect::<Result<Vec<_>, _>>()?;
+    }
     let (peer_id, mut events, server) =
         NodeServer::new(load_identity(&arguments.identity)?, &config)?;
     if arguments.json {
