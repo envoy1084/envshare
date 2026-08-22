@@ -47,7 +47,13 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
         establish_public_reachability(&arguments, &client, &mut events, &advertised, &namespace)
             .await?;
 
-    emit_ready(&arguments, &code_text, &sender_peer, &advertised[0]);
+    emit_ready(
+        &arguments,
+        &code_text,
+        &sender_peer,
+        &advertised[0],
+        envelope.content_type(),
+    );
     std::io::stdout().flush().map_err(|_| CoreError::Output)?;
     let actor = SenderActor::new(
         root,
@@ -305,7 +311,13 @@ async fn wait_for_listener(
     }
 }
 
-fn emit_ready(arguments: &SendArgs, code: &str, peer: &network::PeerId, address: &Multiaddr) {
+fn emit_ready(
+    arguments: &SendArgs,
+    code: &str,
+    peer: &network::PeerId,
+    address: &Multiaddr,
+    content_type: ContentType,
+) {
     if arguments.code_only {
         println!("{code}");
     } else if arguments.json {
@@ -314,7 +326,8 @@ fn emit_ready(arguments: &SendArgs, code: &str, peer: &network::PeerId, address:
             serde_json::json!({
                 "event": "ready",
                 "peer_id": peer.to_string(),
-                "address": address.to_string()
+                "address": address.to_string(),
+                "payload_format": payload_format(content_type)
             })
         );
         eprintln!("Share code: {code}");
@@ -326,6 +339,16 @@ fn emit_ready(arguments: &SendArgs, code: &str, peer: &network::PeerId, address:
         } else {
             println!("Direct address: {address}");
         }
+        if content_type == ContentType::DotenvNormalized {
+            println!("Payload format: normalized selected keys");
+        }
+    }
+}
+
+const fn payload_format(content_type: ContentType) -> &'static str {
+    match content_type {
+        ContentType::DotenvRaw => "dotenv_raw",
+        ContentType::DotenvNormalized => "dotenv_normalized",
     }
 }
 

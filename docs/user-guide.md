@@ -75,6 +75,10 @@ envshare send .env --keys DATABASE_URL,API_TOKEN
 ```
 
 Missing selected keys are rejected unless `--allow-missing-keys` is explicit.
+Human output explicitly reports `Payload format: normalized selected keys` before
+waiting for a receiver. JSON mode reports the non-secret
+`"payload_format":"dotenv_normalized"` field on its ready event; code-only mode
+continues to print exactly the capability and nothing else.
 To avoid persisting the received payload, execute a child directly:
 
 ```console

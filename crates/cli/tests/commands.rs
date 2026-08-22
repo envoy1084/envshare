@@ -163,6 +163,66 @@ fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dy
 }
 
 #[test]
+fn selected_key_send_reports_and_delivers_normalized_payload() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    let input = directory.path().join("selected.env");
+    let output = directory.path().join("selected.received.env");
+    fs::write(
+        &input,
+        b"# omitted comment\nB=last\nA='first value'\nB='selected value'\nC=omitted\n",
+    )?;
+
+    let mut sender = Command::new(binary())
+        .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .args(["--keys", "B,A", "--expires", "15s"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let sender_stdout = sender.stdout.take().ok_or("missing sender stdout")?;
+    let mut sender_lines = BufReader::new(sender_stdout).lines();
+    let code = value_after(
+        &sender_lines.next().ok_or("missing share code")??,
+        "Share code: ",
+    )?;
+    let peer = value_after(
+        &sender_lines.next().ok_or("missing sender peer")??,
+        "Sender peer: ",
+    )?;
+    let address = value_after(
+        &sender_lines.next().ok_or("missing sender address")??,
+        "Direct address: ",
+    )?;
+    assert_eq!(
+        sender_lines.next().ok_or("missing payload format")??,
+        "Payload format: normalized selected keys"
+    );
+
+    let receiver = Command::new(binary())
+        .args([
+            "receive",
+            "--code",
+            &code,
+            "--peer",
+            &peer,
+            "--address",
+            &address,
+        ])
+        .arg("--output")
+        .arg(&output)
+        .output()?;
+    if !receiver.status.success() {
+        let _ = sender.kill();
+    }
+    assert_successful_payload(
+        &receiver,
+        &output,
+        b"A=\"first value\"\nB=\"selected value\"\n",
+    )?;
+    assert!(sender.wait()?.success());
+    Ok(())
+}
+
+#[test]
 fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("run.env");
@@ -363,8 +423,10 @@ fn federated_send_waits_for_registration_and_receives_without_route_arguments()
         .await?
     })?;
     let endpoint = format!("{node_address}/p2p/{node_peer}");
-    let unavailable_peer = network::PeerId::random();
-    let unavailable_endpoint = format!("/ip4/127.0.0.1/tcp/1/p2p/{unavailable_peer}");
+    let unavailable_peer_one = network::PeerId::random();
+    let unavailable_peer_two = network::PeerId::random();
+    let unavailable_endpoint_one = format!("/ip4/127.0.0.1/tcp/1/p2p/{unavailable_peer_one}");
+    let unavailable_endpoint_two = format!("/ip4/127.0.0.1/tcp/2/p2p/{unavailable_peer_two}");
 
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("public.env");
@@ -379,7 +441,9 @@ fn federated_send_waits_for_registration_and_receives_without_route_arguments()
             "--discovery-node",
             &endpoint,
             "--discovery-node",
-            &unavailable_endpoint,
+            &unavailable_endpoint_one,
+            "--discovery-node",
+            &unavailable_endpoint_two,
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -428,7 +492,9 @@ fn federated_send_waits_for_registration_and_receives_without_route_arguments()
             "--discovery-node",
             &endpoint,
             "--discovery-node",
-            &unavailable_endpoint,
+            &unavailable_endpoint_one,
+            "--discovery-node",
+            &unavailable_endpoint_two,
             "--lan",
         ])
         .arg("--output")
