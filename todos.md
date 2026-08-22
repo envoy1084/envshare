@@ -24,7 +24,7 @@ tests, documentation, and relevant verification commands pass.
 
 ## Phase 1 — Capability, cryptography, protocol, and lifecycle
 
-- [ ] Implement the versioned 160-bit Crockford Base32 capability format with a
+- [x] Implement the versioned 160-bit Crockford Base32 capability format with a
       checksum, aliases, redacted secret types, and zeroization.
 - [ ] Implement domain-separated HKDF derivation for room, authentication, and
       session material with deterministic golden vectors.

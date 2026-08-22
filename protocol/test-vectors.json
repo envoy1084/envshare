@@ -3,7 +3,18 @@
   "format_version": 1,
   "protocol_version": 1,
   "encoding": "lowercase hexadecimal unless a field name ends in _text",
-  "code_vectors": [],
+  "code_vectors": [
+    {
+      "name": "all-zero-secret",
+      "secret": "0000000000000000000000000000000000000000",
+      "code_text": "esh1-0000-0000-0000-0000-0000-0000-0000-0000-QR"
+    },
+    {
+      "name": "all-one-secret",
+      "secret": "ffffffffffffffffffffffffffffffffffffffff",
+      "code_text": "esh1-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-AN"
+    }
+  ],
   "derivation_vectors": [],
   "transcript_vectors": [],
   "proof_vectors": [],
