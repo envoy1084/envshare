@@ -112,7 +112,7 @@ tests, documentation, and relevant verification commands pass.
       firewall guidance, hardening, resource limits, and health checks.
 - [x] Add Prometheus alerts, a Grafana dashboard, backup/restore, rolling upgrade,
       identity rotation, overload, abuse, and incident runbooks.
-- [ ] Add load and multi-day soak harnesses and document tested capacity limits.
+- [x] Add load and multi-day soak harnesses and document tested capacity limits.
 
 ## Phase 7 — Distribution, publishing, and public beta
 

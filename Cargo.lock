@@ -3844,12 +3844,19 @@ dependencies = [
 name = "testkit"
 version = "0.1.0-alpha.1"
 dependencies = [
+ "anyhow",
+ "clap",
  "code",
  "core",
  "crypto",
+ "humantime",
  "network",
+ "node",
  "protocol",
+ "serde",
+ "serde_json",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

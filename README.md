@@ -77,6 +77,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 - [Node configuration](docs/node-configuration.md)
 - [Node deployment](docs/deployment.md)
 - [Node operations](docs/operations.md)
+- [Node load and soak testing](docs/load-testing.md)
 - [Command-line interface](docs/cli.md)
 - [Client configuration](docs/configuration.md)
 - [Protocol specification](protocol/protocol.md)
