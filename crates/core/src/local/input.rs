@@ -45,4 +45,18 @@ mod tests {
         ));
         Ok(())
     }
+
+    #[test]
+    fn protocol_payload_boundary_is_exact() -> Result<(), CoreError> {
+        let maximum = protocol::MAX_PAYLOAD_BYTES;
+        assert_eq!(
+            read_bounded(Cursor::new(vec![0_u8; maximum]), maximum)?.len(),
+            maximum
+        );
+        assert!(matches!(
+            read_bounded(Cursor::new(vec![0_u8; maximum + 1]), maximum),
+            Err(CoreError::Transfer)
+        ));
+        Ok(())
+    }
 }

@@ -107,3 +107,15 @@ async fn tcp_noise_yamux_transfers_a_bounded_message() -> Result<(), Box<dyn Err
 async fn quic_transfers_a_bounded_message() -> Result<(), Box<dyn Error>> {
     transfer_over("/ip4/127.0.0.1/udp/0/quic-v1").await
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cancellation_stops_the_owner_and_closes_commands() -> Result<(), Box<dyn Error>> {
+    let (client, _events, cancellation, task) = start_driver()?;
+    cancellation.cancel();
+    timeout(Duration::from_secs(5), task).await??;
+    assert_eq!(
+        client.listen("/ip4/127.0.0.1/tcp/0".parse()?).await,
+        Err(network::NetworkError::TaskStopped)
+    );
+    Ok(())
+}

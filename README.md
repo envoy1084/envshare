@@ -20,18 +20,18 @@ The capability is a bearer secret. Anyone who obtains it can claim the share.
 Envshare does not protect a secret after an authorized receiver obtains it and
 does not provide anonymity.
 
-## Planned commands
+## Direct-transfer commands
 
 ```console
-envshare send .env
-envshare receive --output .env.shared
-envshare run -- cargo run
-envshare doctor
+envshare send .env --listen /ip4/127.0.0.1/tcp/0
+envshare receive --peer <PEER_ID> --address <MULTIADDR> --output .env.shared
+envshare run --peer <PEER_ID> --address <MULTIADDR> -- cargo run
 ```
 
-The currently compiled binaries only expose version and help information while
-the protocol is implemented phase by phase. Progress is tracked in
-[`todos.md`](todos.md).
+The sender prints a capability code, Peer ID, and direct multiaddress after its
+listener is ready. The receiver reads the code through a hidden prompt by
+default; `--code-stdin` is available for automation. Public discovery and relay
+fallback are being implemented phase by phase in [`todos.md`](todos.md).
 
 ## Development
 

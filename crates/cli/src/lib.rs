@@ -2,6 +2,13 @@
 
 #![forbid(unsafe_code)]
 
+mod args;
+mod commands;
+mod failure;
+
+pub use args::Cli;
+pub use failure::CliFailure;
+
 /// Stable process exit codes used by human and JSON workflows.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
@@ -38,6 +45,15 @@ impl ExitCode {
     pub const fn as_i32(self) -> i32 {
         self as i32
     }
+}
+
+/// Executes the parsed command and returns the desired process status.
+///
+/// # Errors
+///
+/// Returns a secret-safe CLI failure with a stable exit classification.
+pub async fn run(cli: Cli) -> Result<i32, CliFailure> {
+    commands::run(cli).await
 }
 
 #[cfg(test)]

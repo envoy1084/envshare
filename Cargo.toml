@@ -36,9 +36,11 @@ getrandom = "0.4.3"
 futures = "0.3.32"
 hkdf = "0.13.0"
 hmac = { version = "0.13.0", features = ["zeroize"] }
+humantime = "2.4.0"
 network = { version = "=0.1.0-alpha.1", path = "crates/network" }
 nix = { version = "0.31.3", features = ["process", "signal"] }
 protocol = { version = "=0.1.0-alpha.1", path = "crates/protocol" }
+rpassword = "7.5.4"
 libp2p = { version = "0.56.0", default-features = false, features = [
     "dcutr",
     "ed25519",

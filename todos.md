@@ -54,11 +54,11 @@ tests, documentation, and relevant verification commands pass.
       normalization, metadata validation, and secret-safe diagnostics.
 - [x] Implement atomic private file output on Unix and Windows, no-clobber by
       default, explicit replacement, symlink/reparse-point defenses, and cleanup.
-- [ ] Implement direct child execution with received variables, overlay/override/
+- [x] Implement direct child execution with received variables, overlay/override/
       clean modes, signal forwarding, and correct exit-status propagation.
-- [ ] Implement initial `send`, `receive`, and `run` CLI commands, hidden prompts,
+- [x] Implement initial `send`, `receive`, and `run` CLI commands, hidden prompts,
       stdin automation, human output, JSON events, and stable exit codes.
-- [ ] Add localhost/LAN QUIC and TCP integration tests, CLI tests, cancellation
+- [x] Add localhost/LAN QUIC and TCP integration tests, CLI tests, cancellation
       tests, permission tests, exact payload boundary tests, and secret sentinel
       tests.
 

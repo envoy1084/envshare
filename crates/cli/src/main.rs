@@ -3,11 +3,16 @@
 #![forbid(unsafe_code)]
 
 use clap::Parser;
+use cli::Cli;
 
-#[derive(Debug, Parser)]
-#[command(name = "envshare", version, about)]
-struct Cli {}
-
-fn main() {
-    let _cli = Cli::parse();
+#[tokio::main]
+async fn main() {
+    let status = match cli::run(Cli::parse()).await {
+        Ok(status) => status,
+        Err(error) => {
+            eprintln!("{error}");
+            error.exit_code().as_i32()
+        }
+    };
+    std::process::exit(status);
 }
