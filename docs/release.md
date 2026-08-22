@@ -54,6 +54,12 @@ HTTPS installers and verify GitHub attestations on clean systems after the draft
 artifacts exist. Record those URLs, digests, runner images, and results in the
 release issue; local fixture tests are not evidence that GitHub hosting works.
 
+After publication, manually dispatch `.github/workflows/release-qualification.yml`
+with the immutable tag. It downloads through the published installers and runs
+exact-payload QUIC and TCP transfers on clean Linux, macOS, and Windows runners,
+plus a relay-only transfer using the published Linux node archive. This workflow
+is deliberately separate from the small per-change CI suite.
+
 ## Post-release verification
 
 Before announcing a release:

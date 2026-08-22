@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: Release qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag to qualify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag }}
+
+jobs:
+  direct-unix:
+    name: Installed direct transfer (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Qualify installed QUIC and TCP transfers
+        shell: bash
+        run: scripts/qualify-published-transfer.sh "$RELEASE_TAG" direct
+
+  direct-windows:
+    name: Installed direct transfer (windows-latest)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Qualify installed QUIC and TCP transfers
+        shell: pwsh
+        run: ./scripts/qualify-published-transfer.ps1 -Tag $env:RELEASE_TAG
+
+  relay-linux:
+    name: Installed relay-only transfer (ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Qualify installed relay-only transfer
+        shell: bash
+        run: scripts/qualify-published-transfer.sh "$RELEASE_TAG" relay

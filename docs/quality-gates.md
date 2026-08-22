@@ -20,6 +20,7 @@ complete output, commit ID, host details, and tool versions to the release issue
 | Fuzzing | `scripts/fuzz-check.sh 60` | all four targets finish without a crash or sanitizer finding |
 | Cross-platform | focused GitHub matrix plus candidate artifact tests | Linux, macOS, and Windows checks pass on the candidate commit |
 | NAT/TCP fallback | build the release client, then run `sudo scripts/test-nat.sh` on isolated Linux | transfer succeeds across separate namespaces with UDP blocked and emulated latency |
+| Published transfer | manually dispatch `release-qualification.yml` for the tag | installed QUIC/TCP transfers pass on Linux, macOS, and Windows; the published Linux node completes a relay-only transfer |
 | Overload | commands in [load testing](load-testing.md) | bounds hold, zero harness failures, and cleanup returns resources near baseline |
 | Soak | 24-hour procedure in [load testing](load-testing.md) | no crash, restart, OOM, unbounded RSS trend, or descriptor leak |
 | Release | `scripts/release-check.sh` plus published installer/attestation checks in [release](release.md) | complete plan, install/rollback checks, checksums, SBOMs, and attestations pass |
