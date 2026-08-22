@@ -574,7 +574,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn registration_maintenance_unregisters_on_cancellation() -> Result<(), Box<dyn Error>> {
+    async fn registration_maintenance_renews_and_unregisters_on_cancellation()
+    -> Result<(), Box<dyn Error>> {
         let provider = CountingProvider::default();
         let observed = provider.clone();
         let cancellation = CancellationToken::new();
@@ -585,17 +586,17 @@ mod tests {
             address: "/ip4/127.0.0.1/tcp/1".parse()?,
         }];
         let task = tokio::spawn(async move {
-            maintain_registrations(&provider, &nodes, &namespace, 30, 1, stop).await;
+            maintain_registrations(&provider, &nodes, &namespace, 1, 1, stop).await;
         });
-        tokio::time::timeout(Duration::from_secs(1), async {
-            while observed.registered.load(Ordering::SeqCst) == 0 {
+        tokio::time::timeout(Duration::from_secs(3), async {
+            while observed.registered.load(Ordering::SeqCst) < 2 {
                 tokio::task::yield_now().await;
             }
         })
         .await?;
         cancellation.cancel();
         task.await?;
-        assert_eq!(observed.registered.load(Ordering::SeqCst), 1);
+        assert!(observed.registered.load(Ordering::SeqCst) >= 2);
         assert_eq!(observed.unregistered.load(Ordering::SeqCst), 1);
         Ok(())
     }
