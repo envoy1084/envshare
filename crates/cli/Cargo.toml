@@ -49,7 +49,7 @@ formula = "envshare"
 installers = ["shell", "powershell", "homebrew"]
 
 [dev-dependencies]
-node = { version = "=0.1.0", path = "../node" }
+node = { version = "=0.1.1", path = "../node" }
 tempfile.workspace = true
 
 [target.'cfg(unix)'.dev-dependencies]

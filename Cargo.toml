@@ -13,7 +13,7 @@ resolver = "3"
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.96"
 authors = ["Envshare contributors"]
@@ -29,22 +29,22 @@ async-trait = "0.1.89"
 clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
 clap_complete = "4.5.65"
 clap_mangen = "0.2.31"
-code = { version = "=0.1.0", path = "crates/code" }
-app-core = { package = "core", version = "=0.1.0", path = "crates/core" }
+code = { version = "=0.1.1", path = "crates/code" }
+app-core = { package = "core", version = "=0.1.1", path = "crates/core" }
 chacha20poly1305 = { version = "0.11.0", features = ["zeroize"] }
-crypto = { version = "=0.1.0", path = "crates/crypto" }
+crypto = { version = "=0.1.1", path = "crates/crypto" }
 dotenvy = "0.15.7"
 getrandom = "0.4.3"
 futures = "0.3.32"
 hkdf = "0.13.0"
 hmac = { version = "0.13.0", features = ["zeroize"] }
 humantime = "2.4.0"
-network = { version = "=0.1.0", path = "crates/network" }
+network = { version = "=0.1.1", path = "crates/network" }
 nix = { version = "0.31.3", features = ["process", "signal"] }
 opentelemetry = { version = "0.32.0", default-features = false, features = ["trace"] }
 opentelemetry-otlp = { version = "0.32.0", default-features = false, features = ["http-proto", "reqwest-blocking-client", "reqwest-rustls-webpki-roots", "trace"] }
 opentelemetry_sdk = { version = "0.32.1", default-features = false, features = ["trace"] }
-protocol = { version = "=0.1.0", path = "crates/protocol" }
+protocol = { version = "=0.1.1", path = "crates/protocol" }
 process-wrap = { version = "9.1.0", default-features = false, features = ["job-object", "kill-on-drop", "process-group", "tokio1"] }
 prost = "0.14.4"
 rpassword = "7.5.4"

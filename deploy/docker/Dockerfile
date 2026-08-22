@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 
 FROM debian:bookworm-slim@sha256:abd67ffcfa541b485a3dff59865ab629aa048a6c613e639d36e7456b0b229241 AS runtime
 
-ARG VERSION="0.1.0"
+ARG VERSION="0.1.1"
 LABEL org.opencontainers.image.title="Envshare node" \
       org.opencontainers.image.description="Bounded libp2p discovery and relay node" \
       org.opencontainers.image.licenses="Apache-2.0" \

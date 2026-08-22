@@ -3,7 +3,7 @@
 
 set -eu
 
-INSTALLER_VERSION="0.1.0"
+INSTALLER_VERSION="0.1.1"
 REPOSITORY="envoy1084/envshare"
 
 usage() {

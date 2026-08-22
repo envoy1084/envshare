@@ -23,7 +23,7 @@ Run the installer directly from the versioned HTTPS release:
 
 ```console
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/envoy1084/envshare/releases/download/v0.1.0/install.sh | sh
+  https://github.com/envoy1084/envshare/releases/download/v0.1.1/install.sh | sh
 ```
 
 The default destination is `$HOME/.local/bin/envshare`. Select an absolute
@@ -31,8 +31,8 @@ destination without a prompt:
 
 ```console
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/envoy1084/envshare/releases/download/v0.1.0/install.sh |
-  sh -s -- --version 0.1.0 --install-dir "$HOME/bin"
+  https://github.com/envoy1084/envshare/releases/download/v0.1.1/install.sh |
+  sh -s -- --version 0.1.1 --install-dir "$HOME/bin"
 ```
 
 Pass `--force` only when intentionally replacing that path. `--dry-run` performs
@@ -45,7 +45,7 @@ shell profile, or collect telemetry.
 Download and invoke the version-pinned installer:
 
 ```powershell
-$version = "0.1.0"
+$version = "0.1.1"
 $script = Invoke-RestMethod "https://github.com/envoy1084/envshare/releases/download/v$version/install.ps1"
 & ([scriptblock]::Create($script)) -Version $version
 ```
@@ -68,7 +68,7 @@ Each release includes a cargo-dist-generated `envshare.rb` formula for the macOS
 and Linux targets. Install the pinned formula asset after reviewing it:
 
 ```console
-version=0.1.0
+version=0.1.1
 curl --proto '=https' --tlsv1.2 -LsSf \
   "https://github.com/envoy1084/envshare/releases/download/v$version/envshare.rb" \
   -o envshare.rb

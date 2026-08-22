@@ -49,10 +49,10 @@ Tagged releases publish a signed multi-platform node image for `linux/amd64` and
 `linux/arm64`, including an SBOM and build provenance:
 
 ```console
-docker pull ghcr.io/envoy1084/envshare-node:0.1.0
-cosign verify ghcr.io/envoy1084/envshare-node:0.1.0 \
+docker pull ghcr.io/envoy1084/envshare-node:0.1.1
+cosign verify ghcr.io/envoy1084/envshare-node:0.1.1 \
   --certificate-identity-regexp \
-  'https://github.com/envoy1084/envshare/.github/workflows/container-release.yml@refs/(tags/v0.1.0|heads/main)' \
+  'https://github.com/envoy1084/envshare/.github/workflows/container-release.yml@refs/(tags/v0.1.1|heads/main)' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 

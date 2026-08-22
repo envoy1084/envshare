@@ -20,7 +20,7 @@ app-core.workspace = true
 crypto.workspace = true
 humantime.workspace = true
 network.workspace = true
-node = { version = "=0.1.0", path = "../node" }
+node = { version = "=0.1.1", path = "../node" }
 protocol.workspace = true
 serde.workspace = true
 serde_json.workspace = true
