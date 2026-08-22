@@ -35,8 +35,11 @@ the public beta; the workflow does not attempt to change repository settings.
 ## CI and clean-machine evidence
 
 Pull requests execute the dist plan through `.github/workflows/release.yml`.
-The main CI workflow additionally builds a release client on fresh hosted Linux,
-macOS, and Windows runners and runs the platform installer smoke harness. The
+The main CI workflow intentionally runs only a fast subset: workspace formatting,
+linting and documentation; capability, cryptography, and protocol tests on Linux,
+macOS, and Windows; dependency policy; and installer smoke tests on fresh Linux
+and Windows runners. Exhaustive tests, fuzzing, coverage, network emulation, and
+load or soak runs are release gates rather than duplicated CI work. The installer
 harness installs into a new temporary directory, executes the binary, proves an
 existing installation is not silently overwritten, corrupts the fixture checksum,
 and proves failed verification leaves the installed binary unchanged.
