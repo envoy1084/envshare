@@ -39,6 +39,12 @@ pub struct NodeConfig {
     pub max_connections: u32,
     /// Maximum transport connections for one peer.
     pub max_connections_per_peer: u32,
+    /// Maximum simultaneous inbound connections from one source IP.
+    pub max_connections_per_ip: usize,
+    /// Maximum inbound transport attempts accepted from one IP each minute.
+    pub connection_attempts_per_ip_per_minute: u32,
+    /// Maximum source-IP rate buckets retained in memory.
+    pub connection_rate_limit_ips: usize,
     /// Process memory threshold for rejecting new connections.
     pub max_process_memory_bytes: usize,
     /// Capacity of the safe operational event stream.
@@ -91,6 +97,9 @@ impl Default for NodeConfig {
             max_circuit_bytes: 2 * 1024 * 1024,
             max_connections: 512,
             max_connections_per_peer: 8,
+            max_connections_per_ip: 32,
+            connection_attempts_per_ip_per_minute: 120,
+            connection_rate_limit_ips: 4_096,
             max_process_memory_bytes: 1024 * 1024 * 1024,
             event_capacity: 256,
             discovery_min_ttl_seconds: 30,
@@ -162,6 +171,9 @@ impl NodeConfig {
             && self.max_connections_per_peer > 0
             && self.max_connections_per_peer <= 128
             && self.max_connections_per_peer <= self.max_connections
+            && (1..=256).contains(&self.max_connections_per_ip)
+            && (1..=1_200).contains(&self.connection_attempts_per_ip_per_minute)
+            && (1..=16_384).contains(&self.connection_rate_limit_ips)
             && self.max_process_memory_bytes >= 64 * 1024 * 1024
             && self.max_process_memory_bytes <= MAX_PROCESS_MEMORY_BYTES
             && (1..=8_192).contains(&self.event_capacity)

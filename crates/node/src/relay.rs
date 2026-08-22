@@ -9,10 +9,11 @@ use libp2p::{
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use crate::{NodeConfig, NodeError, rendezvous};
+use crate::{NodeConfig, NodeError, admission, rendezvous};
 
 #[derive(NetworkBehaviour)]
 struct Behaviour {
+    admission: admission::Behaviour,
     relay: relay::Behaviour,
     rendezvous: rendezvous::Behaviour,
     identify: identify::Behaviour,
@@ -269,6 +270,7 @@ fn build_behaviour(
         .with_max_established(Some(config.max_connections))
         .with_max_established_per_peer(Some(config.max_connections_per_peer));
     Behaviour {
+        admission: admission::Behaviour::new(config),
         relay: relay::Behaviour::new(peer_id, relay_config),
         rendezvous: rendezvous::behaviour(),
         identify: identify::Behaviour::new(

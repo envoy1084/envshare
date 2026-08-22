@@ -30,6 +30,9 @@ max_circuit_bytes = 2097152
 
 max_connections = 512
 max_connections_per_peer = 8
+max_connections_per_ip = 32
+connection_attempts_per_ip_per_minute = 120
+connection_rate_limit_ips = 4096
 max_process_memory_bytes = 1073741824
 event_capacity = 256
 
@@ -54,3 +57,10 @@ response size, and request-rate state. They cannot be raised through TOML or
 command-line overrides. Private, loopback, and link-local discovery records are
 rejected unless `discovery_allow_private_addresses` is explicitly enabled for a
 private deployment.
+
+Source-IP admission runs before Noise negotiation. It bounds simultaneous
+connections, attempts per fixed one-minute window, and the number of retained IP
+buckets. Authenticated peers are independently bounded by transport connections,
+relay reservations/circuits, discovery storage, and discovery request rates.
+When any bound or rate-map capacity is exhausted, the node rejects new work
+without allocating unbounded state.

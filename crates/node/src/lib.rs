@@ -2,6 +2,7 @@
 
 #![forbid(unsafe_code)]
 
+mod admission;
 mod config;
 mod identity;
 mod relay;
