@@ -6,7 +6,10 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use app_core::{CoreError, DirectSender, SenderActor, SenderState, select_dotenv};
 use code::ShareCode;
 use crypto::derive_root;
-use network::{Multiaddr, NetworkConfig, NetworkDriver, NetworkEvent, identity};
+use network::{
+    DiscoveryNamespace, DiscoveryProvider, Multiaddr, NetworkConfig, NetworkDriver, NetworkEvent,
+    PrivacyMode, dispatch_registration, identity, maintain_registrations,
+};
 use protocol::{ContentType, SecretEnvelope};
 use tokio_util::sync::CancellationToken;
 use zeroize::Zeroizing;
@@ -22,36 +25,27 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
             "expiry must be positive",
         ));
     }
-    let raw = Zeroizing::new(read_sender_input(&arguments.input)?);
-    let (payload, content_type) = if arguments.keys.is_empty() {
-        (raw.as_slice().to_vec(), ContentType::DotenvRaw)
-    } else {
-        (
-            select_dotenv(&raw, &arguments.keys, arguments.allow_missing_keys)?,
-            ContentType::DotenvNormalized,
-        )
-    };
-    let now_ms = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|_| CoreError::Internal)?
-        .as_millis();
-    let now_ms = u64::try_from(now_ms).map_err(|_| CoreError::Internal)?;
-    let expiry_ms =
-        u64::try_from(arguments.expires.as_millis()).map_err(|_| CoreError::Configuration)?;
-    let expires_at = now_ms
-        .checked_add(expiry_ms)
-        .ok_or(CoreError::Configuration)?;
-    let envelope = SecretEnvelope::new(content_type, None, now_ms, expires_at, payload)
-        .map_err(|_| CoreError::Transfer)?;
+    let envelope = prepare_envelope(&arguments)?;
     let code = ShareCode::generate().map_err(|_| CoreError::Internal)?;
     let root =
         derive_root(code.secret(), &arguments.network).map_err(|_| CoreError::InvalidCode)?;
+    let namespace = DiscoveryNamespace::from_room_id(*root.room_id().as_bytes());
     let code_text = Zeroizing::new(code.to_string());
 
     let keypair = identity::Keypair::generate_ed25519();
     let sender_peer = keypair.public().to_peer_id();
+    let privacy = if arguments.discovery.relay_only {
+        PrivacyMode::RelayOnly
+    } else {
+        PrivacyMode::Standard
+    };
+    let config = NetworkConfig {
+        enable_mdns: arguments.discovery.mdns,
+        privacy_mode: privacy,
+        ..NetworkConfig::default()
+    };
     let (client, mut events, driver) =
-        NetworkDriver::new(keypair, &NetworkConfig::default()).map_err(|_| CoreError::Network)?;
+        NetworkDriver::new(keypair, &config).map_err(|_| CoreError::Network)?;
     let listen: Multiaddr = arguments
         .listen
         .parse()
@@ -63,6 +57,9 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
         .await
         .map_err(|_| CoreError::Network)?;
     let advertised = wait_for_listener(&mut events).await?;
+    let mut registration =
+        establish_public_reachability(&arguments, &client, &mut events, &advertised, &namespace)
+            .await?;
 
     emit_ready(&arguments, &code_text, &sender_peer, &advertised);
     std::io::stdout().flush().map_err(|_| CoreError::Output)?;
@@ -83,11 +80,13 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
         interrupted = tokio::signal::ctrl_c() => {
             interrupted.map_err(|_| CoreError::Internal)?;
             service_cancel.cancel();
+            stop_registration(registration.take()).await;
             driver_cancel.cancel();
             let _ = driver_task.await;
             return Err(CliFailure::new(ExitCode::Interrupted, "interrupted"));
         }
     };
+    stop_registration(registration.take()).await;
     driver_cancel.cancel();
     driver_task
         .await
@@ -110,6 +109,125 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
             "sender stopped unexpectedly",
         )),
     }
+}
+
+fn prepare_envelope(arguments: &SendArgs) -> Result<SecretEnvelope, CliFailure> {
+    let raw = Zeroizing::new(read_sender_input(&arguments.input)?);
+    let (payload, content_type) = if arguments.keys.is_empty() {
+        (raw.as_slice().to_vec(), ContentType::DotenvRaw)
+    } else {
+        (
+            select_dotenv(&raw, &arguments.keys, arguments.allow_missing_keys)?,
+            ContentType::DotenvNormalized,
+        )
+    };
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| CoreError::Internal)?
+        .as_millis();
+    let now_ms = u64::try_from(now_ms).map_err(|_| CoreError::Internal)?;
+    let expiry_ms =
+        u64::try_from(arguments.expires.as_millis()).map_err(|_| CoreError::Configuration)?;
+    let expires_at = now_ms
+        .checked_add(expiry_ms)
+        .ok_or(CoreError::Configuration)?;
+    SecretEnvelope::new(content_type, None, now_ms, expires_at, payload)
+        .map_err(|_| CoreError::Transfer.into())
+}
+
+struct RegistrationMaintenance {
+    cancellation: CancellationToken,
+    task: tokio::task::JoinHandle<()>,
+}
+
+async fn establish_public_reachability(
+    arguments: &SendArgs,
+    client: &network::NetworkClient,
+    events: &mut tokio::sync::mpsc::Receiver<NetworkEvent>,
+    advertised: &Multiaddr,
+    namespace: &DiscoveryNamespace,
+) -> Result<Option<RegistrationMaintenance>, CliFailure> {
+    if arguments.discovery.relay_only
+        && !advertised
+            .iter()
+            .any(|protocol| matches!(protocol, network::MultiaddrProtocol::P2pCircuit))
+    {
+        return Err(CliFailure::new(
+            ExitCode::Configuration,
+            "relay-only mode requires a relay circuit listen address",
+        ));
+    }
+    if arguments.discovery.nodes.is_empty() {
+        return Ok(None);
+    }
+    client
+        .add_discovery_address(advertised.clone())
+        .await
+        .map_err(|_| CoreError::Network)?;
+    let ttl_seconds = arguments.expires.as_secs().clamp(30, 300);
+    let dispatched = dispatch_registration(
+        client,
+        &arguments.discovery.nodes,
+        namespace,
+        ttl_seconds,
+        4,
+    )
+    .await;
+    if dispatched.iter().all(|(_, result)| result.is_err())
+        || !wait_for_public_registration(events, arguments.discovery.nodes.len()).await?
+    {
+        return Err(CliFailure::new(
+            ExitCode::Network,
+            "no discovery node accepted the share registration",
+        ));
+    }
+    let cancellation = CancellationToken::new();
+    let provider = client.clone();
+    let nodes = arguments.discovery.nodes.clone();
+    let renewal_namespace = namespace.clone();
+    let renewal_cancel = cancellation.clone();
+    let task = tokio::spawn(async move {
+        maintain_registrations(
+            &provider,
+            &nodes,
+            &renewal_namespace,
+            ttl_seconds,
+            4,
+            renewal_cancel,
+        )
+        .await;
+    });
+    Ok(Some(RegistrationMaintenance { cancellation, task }))
+}
+
+async fn stop_registration(registration: Option<RegistrationMaintenance>) {
+    if let Some(registration) = registration {
+        registration.cancellation.cancel();
+        let _ = registration.task.await;
+    }
+}
+
+async fn wait_for_public_registration(
+    events: &mut tokio::sync::mpsc::Receiver<NetworkEvent>,
+    node_count: usize,
+) -> Result<bool, CoreError> {
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        let mut failed = std::collections::HashSet::new();
+        loop {
+            match events.recv().await.ok_or(CoreError::Network)? {
+                NetworkEvent::DiscoveryRegistered { .. } => return Ok(true),
+                NetworkEvent::DiscoveryFailed { node } => {
+                    failed.insert(node);
+                    if failed.len() == node_count {
+                        return Ok(false);
+                    }
+                }
+                _ => {}
+            }
+        }
+    })
+    .await
+    .map_err(|_| CoreError::Network)?
 }
 
 async fn wait_for_listener(

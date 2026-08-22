@@ -5,7 +5,10 @@ use std::str::FromStr;
 use app_core::{CoreError, DirectReceiver, PendingDirectOffer, ReceiverSession, read_bounded};
 use code::ShareCode;
 use crypto::derive_root;
-use network::{Multiaddr, NetworkConfig, NetworkDriver, PeerId, identity};
+use network::{
+    CandidatePolicy, CandidateSet, DiscoveryNamespace, NetworkConfig, NetworkDriver, NetworkEvent,
+    PeerId, PrivacyMode, dispatch_discovery, identity,
+};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use zeroize::Zeroizing;
@@ -32,29 +35,135 @@ pub(crate) async fn receive_direct(
     let code_text = read_code(arguments)?;
     let code = ShareCode::from_str(code_text.trim())
         .map_err(|_| CliFailure::new(ExitCode::InvalidCode, "invalid share code"))?;
-    let sender_peer = PeerId::from_str(&arguments.peer)
-        .map_err(|_| CliFailure::new(ExitCode::Configuration, "invalid sender Peer ID"))?;
-    let sender_address = Multiaddr::from_str(&arguments.address)
-        .map_err(|_| CliFailure::new(ExitCode::Configuration, "invalid sender address"))?;
     let keypair = identity::Keypair::generate_ed25519();
     let receiver_peer = keypair.public().to_peer_id();
     let root =
         derive_root(code.secret(), &arguments.network).map_err(|_| CoreError::InvalidCode)?;
-    let session = ReceiverSession::new(
+    let namespace = DiscoveryNamespace::from_room_id(*root.room_id().as_bytes());
+    let privacy = if arguments.discovery.relay_only {
+        PrivacyMode::RelayOnly
+    } else {
+        PrivacyMode::Standard
+    };
+    let config = NetworkConfig {
+        enable_mdns: arguments.discovery.mdns,
+        privacy_mode: privacy,
+        request_timeout: std::time::Duration::from_secs(5),
+        ..NetworkConfig::default()
+    };
+    let (client, mut events, driver) =
+        NetworkDriver::new(keypair, &config).map_err(|_| CoreError::Network)?;
+    let cancellation = CancellationToken::new();
+    let task = tokio::spawn(driver.run(cancellation.clone()));
+    let network = RunningNetwork { cancellation, task };
+
+    if let (Some(peer), Some(address)) = (&arguments.peer, &arguments.address) {
+        let sender_peer = PeerId::from_str(peer)
+            .map_err(|_| CliFailure::new(ExitCode::Configuration, "invalid sender Peer ID"))?;
+        let sender_address = network::Multiaddr::from_str(address)
+            .map_err(|_| CliFailure::new(ExitCode::Configuration, "invalid sender address"))?;
+        let session = receiver_session(root, arguments, sender_peer, receiver_peer)?;
+        let pending = DirectReceiver::new(client, session, sender_peer, sender_address)
+            .receive()
+            .await?;
+        return Ok((pending, network));
+    }
+    let routes = discover_routes(&client, &mut events, arguments, &namespace, privacy).await?;
+    for route in routes {
+        if route.peer == receiver_peer {
+            continue;
+        }
+        let candidate_root =
+            derive_root(code.secret(), &arguments.network).map_err(|_| CoreError::InvalidCode)?;
+        let session = receiver_session(candidate_root, arguments, route.peer, receiver_peer)?;
+        if let Ok(pending) = DirectReceiver::new(client.clone(), session, route.peer, route.address)
+            .receive()
+            .await
+        {
+            return Ok((pending, network));
+        }
+    }
+    network.stop().await?;
+    Err(CliFailure::new(
+        ExitCode::NotFoundOrUnauthorized,
+        "share not found or capability was not authorized",
+    ))
+}
+
+async fn discover_routes(
+    client: &network::NetworkClient,
+    events: &mut tokio::sync::mpsc::Receiver<NetworkEvent>,
+    arguments: &ConnectionArgs,
+    namespace: &DiscoveryNamespace,
+    privacy: PrivacyMode,
+) -> Result<Vec<network::RouteCandidate>, CliFailure> {
+    if arguments.discovery.nodes.is_empty() && !arguments.discovery.mdns {
+        return Err(CliFailure::new(
+            ExitCode::Configuration,
+            "provide a direct peer/address, discovery node, or --mdns",
+        ));
+    }
+    let _ = dispatch_discovery(client, &arguments.discovery.nodes, namespace, 4).await;
+    let mut candidates = CandidateSet::new(CandidatePolicy {
+        allow_lan: arguments.discovery.lan,
+        privacy,
+        ..CandidatePolicy::default()
+    })
+    .map_err(|_| CoreError::Configuration)?;
+    let mut pending_nodes = arguments
+        .discovery
+        .nodes
+        .iter()
+        .map(|node| node.peer)
+        .collect::<std::collections::HashSet<_>>();
+    let discovery_window = if arguments.discovery.mdns {
+        std::time::Duration::from_secs(3)
+    } else {
+        std::time::Duration::from_secs(5)
+    };
+    let _ = tokio::time::timeout(discovery_window, async {
+        loop {
+            match events.recv().await {
+                Some(NetworkEvent::DiscoveryResults { node, peers }) => {
+                    pending_nodes.remove(&node);
+                    for peer in peers {
+                        candidates.insert(peer);
+                    }
+                }
+                Some(NetworkEvent::DiscoveryFailed { node }) => {
+                    pending_nodes.remove(&node);
+                }
+                Some(NetworkEvent::LanDiscovered { peers }) => {
+                    for peer in peers {
+                        candidates.insert(peer);
+                    }
+                }
+                Some(_) => {}
+                None => break,
+            }
+            if pending_nodes.is_empty() && !arguments.discovery.mdns {
+                break;
+            }
+        }
+    })
+    .await;
+    Ok(candidates.into_ranked())
+}
+
+fn receiver_session(
+    root: crypto::DerivedRoot,
+    arguments: &ConnectionArgs,
+    sender_peer: PeerId,
+    receiver_peer: PeerId,
+) -> Result<ReceiverSession, CliFailure> {
+    ReceiverSession::new(
         root,
         arguments.network.clone(),
         sender_peer.to_bytes(),
         receiver_peer.to_bytes(),
         random_receiver_nonce()?,
-    )?;
-    let (client, _events, driver) =
-        NetworkDriver::new(keypair, &NetworkConfig::default()).map_err(|_| CoreError::Network)?;
-    let cancellation = CancellationToken::new();
-    let task = tokio::spawn(driver.run(cancellation.clone()));
-    let pending = DirectReceiver::new(client, session, sender_peer, sender_address)
-        .receive()
-        .await?;
-    Ok((pending, RunningNetwork { cancellation, task }))
+    )
+    .map_err(Into::into)
 }
 
 fn read_code(arguments: &mut ConnectionArgs) -> Result<Zeroizing<String>, CliFailure> {

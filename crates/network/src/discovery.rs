@@ -2,6 +2,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    str::FromStr,
     time::Duration,
 };
 
@@ -58,6 +59,23 @@ pub struct DiscoveryNode {
     pub peer: PeerId,
     /// Explicit bounded route to the node.
     pub address: Multiaddr,
+}
+
+impl FromStr for DiscoveryNode {
+    type Err = NetworkError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut address = input
+            .parse::<Multiaddr>()
+            .map_err(|_| NetworkError::Configuration)?;
+        let Some(Protocol::P2p(peer)) = address.pop() else {
+            return Err(NetworkError::Configuration);
+        };
+        if address.is_empty() {
+            return Err(NetworkError::Configuration);
+        }
+        Ok(Self { peer, address })
+    }
 }
 
 /// Network exposure policy applied before candidate dialing.

@@ -38,4 +38,5 @@ zeroize.workspace = true
 workspace = true
 
 [dev-dependencies]
+node = { path = "../node" }
 tempfile.workspace = true

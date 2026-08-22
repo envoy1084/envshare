@@ -20,7 +20,28 @@ The capability is a bearer secret. Anyone who obtains it can claim the share.
 Envshare does not protect a secret after an authorized receiver obtains it and
 does not provide anonymity.
 
-## Direct-transfer commands
+## Commands
+
+Start a node with a persistent identity, then use its printed endpoint for
+federated discovery:
+
+```console
+envshare-node key generate --output node.key
+envshare-node serve --identity node.key --listen /ip4/0.0.0.0/tcp/4001
+
+envshare send .env --discovery-node <NODE_MULTIADDR_WITH_PEER_ID>
+envshare receive --discovery-node <NODE_MULTIADDR_WITH_PEER_ID> --output .env.shared
+envshare run --discovery-node <NODE_MULTIADDR_WITH_PEER_ID> -- cargo run
+```
+
+The sender reveals the capability only after at least one configured discovery
+node accepts its signed registration. Configure multiple `--discovery-node`
+values for federation. The receiver queries them concurrently, bounds and
+deduplicates their untrusted results, then capability-authenticates candidates.
+Use `--lan` to admit private addresses and `--mdns` for optional LAN discovery;
+`--relay-only` disables direct candidates and mDNS.
+
+Explicit direct mode remains available:
 
 ```console
 envshare send .env --listen /ip4/127.0.0.1/tcp/0
@@ -30,8 +51,7 @@ envshare run --peer <PEER_ID> --address <MULTIADDR> -- cargo run
 
 The sender prints a capability code, Peer ID, and direct multiaddress after its
 listener is ready. The receiver reads the code through a hidden prompt by
-default; `--code-stdin` is available for automation. Public discovery and relay
-fallback are being implemented phase by phase in [`todos.md`](todos.md).
+default; `--code-stdin` is available for automation.
 
 ## Development
 

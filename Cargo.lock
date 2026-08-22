@@ -477,6 +477,7 @@ dependencies = [
  "getrandom 0.4.3",
  "humantime",
  "network",
+ "node",
  "protocol",
  "rpassword",
  "serde_json",

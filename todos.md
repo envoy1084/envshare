@@ -79,12 +79,12 @@ tests, documentation, and relevant verification commands pass.
 - [x] Implement the discovery abstraction and bounded Rendezvous client.
 - [ ] Implement patched, bounded Rendezvous server behavior with namespace,
       registration, cookie, address, TTL, global, per-peer, and rate limits.
-- [ ] Implement opaque-room registration, renewal, unregister, parallel multi-node
+- [x] Implement opaque-room registration, renewal, unregister, parallel multi-node
       discovery, validation, deduplication, malicious-result handling, and bounded
       candidate authentication.
-- [ ] Display a share code only after public reachability requirements are met.
-- [ ] Add optional mDNS LAN discovery and relay-only privacy mode.
-- [ ] Add multi-node outage, stale registration, malicious registration, wrong
+- [x] Display a share code only after public reachability requirements are met.
+- [x] Add optional mDNS LAN discovery and relay-only privacy mode.
+- [x] Add multi-node outage, stale registration, malicious registration, wrong
       network, renewal, collision, and discovery overload tests.
 
 ## Phase 5 — Complete production CLI

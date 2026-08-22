@@ -3,6 +3,7 @@
 use std::{ffi::OsString, path::PathBuf, time::Duration};
 
 use clap::{Args, Parser, Subcommand};
+use network::DiscoveryNode;
 
 /// Envshare command-line arguments.
 #[derive(Debug, Parser)]
@@ -41,6 +42,8 @@ pub(crate) struct SendArgs {
     /// Explicit local multiaddress to advertise for direct transfer.
     #[arg(long, default_value = "/ip4/127.0.0.1/tcp/0")]
     pub listen: String,
+    #[command(flatten)]
+    pub discovery: SenderDiscoveryArgs,
     /// Print only the secret capability code on stdout.
     #[arg(long, conflicts_with = "json")]
     pub code_only: bool,
@@ -90,13 +93,44 @@ pub(crate) struct ConnectionArgs {
     /// Read the capability code from stdin.
     #[arg(long)]
     pub code_stdin: bool,
-    /// Sender Peer ID printed by the direct sender.
-    #[arg(long)]
-    pub peer: String,
-    /// Sender multiaddress printed by the direct sender.
-    #[arg(long)]
-    pub address: String,
+    /// Sender Peer ID for explicit direct mode.
+    #[arg(long, requires = "address")]
+    pub peer: Option<String>,
+    /// Sender multiaddress for explicit direct mode.
+    #[arg(long, requires = "peer")]
+    pub address: Option<String>,
+    #[command(flatten)]
+    pub discovery: ReceiverDiscoveryArgs,
     /// Public network derivation scope.
     #[arg(long, default_value = "public-v1")]
     pub network: String,
+}
+
+#[derive(Debug, Args)]
+pub(crate) struct SenderDiscoveryArgs {
+    /// Federated Rendezvous endpoint including its trailing `/p2p/<peer-id>`.
+    #[arg(long = "discovery-node", value_name = "MULTIADDR")]
+    pub nodes: Vec<DiscoveryNode>,
+    /// Enable multicast DNS discovery on the local network.
+    #[arg(long)]
+    pub mdns: bool,
+    /// Advertise and accept only Circuit Relay routes.
+    #[arg(long)]
+    pub relay_only: bool,
+}
+
+#[derive(Debug, Args)]
+pub(crate) struct ReceiverDiscoveryArgs {
+    /// Federated Rendezvous endpoint including its trailing `/p2p/<peer-id>`.
+    #[arg(long = "discovery-node", value_name = "MULTIADDR")]
+    pub nodes: Vec<DiscoveryNode>,
+    /// Enable multicast DNS candidate discovery on the local network.
+    #[arg(long)]
+    pub mdns: bool,
+    /// Admit private and link-local candidate routes.
+    #[arg(long)]
+    pub lan: bool,
+    /// Dial only Circuit Relay routes and disable mDNS.
+    #[arg(long)]
+    pub relay_only: bool,
 }
