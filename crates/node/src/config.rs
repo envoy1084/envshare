@@ -31,6 +31,16 @@ pub struct NodeConfig {
     pub max_process_memory_bytes: usize,
     /// Capacity of the safe operational event stream.
     pub event_capacity: usize,
+    /// Minimum accepted discovery registration lifetime.
+    pub discovery_min_ttl_seconds: u64,
+    /// Maximum accepted discovery registration lifetime.
+    pub discovery_max_ttl_seconds: u64,
+    /// Maximum discovery registrations owned by one peer.
+    pub discovery_registrations_per_peer: usize,
+    /// Absolute registration and maximum response-result bound.
+    pub discovery_registrations_total: usize,
+    /// Maximum incremental-discovery cookies retained in memory.
+    pub discovery_cookies: usize,
 }
 
 impl Default for NodeConfig {
@@ -55,6 +65,11 @@ impl Default for NodeConfig {
             max_connections_per_peer: 8,
             max_process_memory_bytes: 1024 * 1024 * 1024,
             event_capacity: 256,
+            discovery_min_ttl_seconds: 30,
+            discovery_max_ttl_seconds: 300,
+            discovery_registrations_per_peer: 8,
+            discovery_registrations_total: 256,
+            discovery_cookies: 512,
         }
     }
 }
@@ -80,5 +95,13 @@ impl NodeConfig {
             && self.max_connections_per_peer <= self.max_connections
             && self.max_process_memory_bytes >= 64 * 1024 * 1024
             && self.event_capacity > 0
+            && self.discovery_min_ttl_seconds > 0
+            && self.discovery_min_ttl_seconds <= self.discovery_max_ttl_seconds
+            && self.discovery_max_ttl_seconds <= 86_400
+            && self.discovery_registrations_per_peer > 0
+            && self.discovery_registrations_per_peer <= self.discovery_registrations_total
+            && self.discovery_registrations_total <= 4_096
+            && self.discovery_cookies > 0
+            && self.discovery_cookies <= 8_192
     }
 }

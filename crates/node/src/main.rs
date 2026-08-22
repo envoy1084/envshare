@@ -142,6 +142,10 @@ fn print_event(json: bool, event: NodeEvent) {
             NodeEvent::ReservationClosed { .. } => "reservation_closed",
             NodeEvent::ReservationDenied { .. } => "reservation_denied",
             NodeEvent::CircuitDenied { .. } => "circuit_denied",
+            NodeEvent::DiscoveryRegistered { .. } => "discovery_registered",
+            NodeEvent::DiscoveryUnregistered { .. } => "discovery_unregistered",
+            NodeEvent::DiscoveryServed { .. } => "discovery_served",
+            NodeEvent::DiscoveryRejected { .. } => "discovery_rejected",
         };
         println!("{}", serde_json::json!({ "event": event_name }));
     } else if let NodeEvent::Listening { address } = event {

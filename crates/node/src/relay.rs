@@ -3,6 +3,7 @@
 use futures::StreamExt;
 use libp2p::{
     Multiaddr, PeerId, Swarm, SwarmBuilder, identify, memory_connection_limits, ping, relay,
+    rendezvous,
     swarm::{NetworkBehaviour, SwarmEvent},
 };
 use tokio::sync::mpsc;
@@ -13,6 +14,7 @@ use crate::{NodeConfig, NodeError};
 #[derive(NetworkBehaviour)]
 struct Behaviour {
     relay: relay::Behaviour,
+    rendezvous: rendezvous::server::Behaviour,
     identify: identify::Behaviour,
     ping: ping::Behaviour,
     connection_limits: libp2p::connection_limits::Behaviour,
@@ -57,6 +59,28 @@ pub enum NodeEvent {
         source: PeerId,
         /// Authenticated destination peer.
         destination: PeerId,
+    },
+    /// One signed discovery registration was accepted.
+    DiscoveryRegistered {
+        /// Authenticated registering peer.
+        peer: PeerId,
+    },
+    /// One registration was explicitly removed or expired.
+    DiscoveryUnregistered {
+        /// Authenticated registered peer.
+        peer: PeerId,
+    },
+    /// A bounded discovery response was served.
+    DiscoveryServed {
+        /// Authenticated querying peer.
+        peer: PeerId,
+        /// Number of signed registrations returned.
+        result_count: usize,
+    },
+    /// A discovery operation was rejected safely.
+    DiscoveryRejected {
+        /// Authenticated requesting peer.
+        peer: PeerId,
     },
 }
 
@@ -163,6 +187,32 @@ impl NodeServer {
                 relay::Event::ReservationClosed { src_peer_id }
                 | relay::Event::ReservationTimedOut { src_peer_id },
             )) => Some(NodeEvent::ReservationClosed { peer: src_peer_id }),
+            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+                rendezvous::server::Event::PeerRegistered { peer, .. },
+            )) => Some(NodeEvent::DiscoveryRegistered { peer }),
+            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+                rendezvous::server::Event::PeerUnregistered { peer, .. },
+            )) => Some(NodeEvent::DiscoveryUnregistered { peer }),
+            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+                rendezvous::server::Event::RegistrationExpired(registration),
+            )) => Some(NodeEvent::DiscoveryUnregistered {
+                peer: registration.record.peer_id(),
+            }),
+            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+                rendezvous::server::Event::DiscoverServed {
+                    enquirer,
+                    registrations,
+                },
+            )) => Some(NodeEvent::DiscoveryServed {
+                peer: enquirer,
+                result_count: registrations.len(),
+            }),
+            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+                rendezvous::server::Event::DiscoverNotServed { enquirer, .. },
+            )) => Some(NodeEvent::DiscoveryRejected { peer: enquirer }),
+            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+                rendezvous::server::Event::PeerNotRegistered { peer, .. },
+            )) => Some(NodeEvent::DiscoveryRejected { peer }),
             _ => None,
         };
         if let Some(event) = event {
@@ -193,6 +243,14 @@ fn build_behaviour(
         .with_max_established_per_peer(Some(config.max_connections_per_peer));
     Behaviour {
         relay: relay::Behaviour::new(peer_id, relay_config),
+        rendezvous: rendezvous::server::Behaviour::new(
+            rendezvous::server::Config::default()
+                .with_min_ttl(config.discovery_min_ttl_seconds)
+                .with_max_ttl(config.discovery_max_ttl_seconds)
+                .with_max_registration_per_peer(config.discovery_registrations_per_peer)
+                .with_max_registration_total(config.discovery_registrations_total)
+                .with_max_stored_cookies(config.discovery_cookies),
+        ),
         identify: identify::Behaviour::new(
             identify::Config::new("/envshare/node/1.0.0".to_owned(), keypair.public())
                 .with_agent_version(format!("envshare-node/{}", env!("CARGO_PKG_VERSION"))),

@@ -3,7 +3,9 @@
 use std::time::Duration;
 
 use libp2p::swarm::NetworkBehaviour;
-use libp2p::{dcutr, identify, memory_connection_limits, ping, relay, request_response};
+use libp2p::{
+    dcutr, identify, memory_connection_limits, ping, relay, rendezvous, request_response,
+};
 
 use crate::{NetworkConfig, codec::TransferCodec, codec::transfer_protocol};
 
@@ -12,6 +14,7 @@ pub(crate) struct Behaviour {
     pub(crate) transfer: request_response::Behaviour<TransferCodec>,
     relay: relay::client::Behaviour,
     dcutr: dcutr::Behaviour,
+    pub(crate) rendezvous: rendezvous::client::Behaviour,
     identify: identify::Behaviour,
     ping: ping::Behaviour,
     connection_limits: libp2p::connection_limits::Behaviour,
@@ -44,6 +47,7 @@ impl Behaviour {
             transfer,
             relay,
             dcutr: dcutr::Behaviour::new(keypair.public().to_peer_id()),
+            rendezvous: rendezvous::client::Behaviour::new(keypair.clone()),
             identify: identify::Behaviour::new(identify_config),
             ping: ping::Behaviour::default(),
             connection_limits: libp2p::connection_limits::Behaviour::new(limits),

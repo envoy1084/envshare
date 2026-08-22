@@ -227,7 +227,11 @@ async fn reservation_saturation_denies_second_peer() -> Result<(), Box<dyn Error
             NodeEvent::Listening { .. }
             | NodeEvent::CircuitAccepted { .. }
             | NodeEvent::ReservationClosed { .. }
-            | NodeEvent::CircuitDenied { .. } => {}
+            | NodeEvent::CircuitDenied { .. }
+            | NodeEvent::DiscoveryRegistered { .. }
+            | NodeEvent::DiscoveryUnregistered { .. }
+            | NodeEvent::DiscoveryServed { .. }
+            | NodeEvent::DiscoveryRejected { .. } => {}
         }
     }
     assert_eq!(accepted, 1);

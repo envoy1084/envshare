@@ -123,7 +123,11 @@ async fn wait_for_listener(
             | NetworkEvent::Disconnected { .. }
             | NetworkEvent::RelayReservation { .. }
             | NetworkEvent::OutboundRelayCircuit { .. }
-            | NetworkEvent::InboundRelayCircuit { .. } => {}
+            | NetworkEvent::InboundRelayCircuit { .. }
+            | NetworkEvent::DiscoveryRegistered { .. }
+            | NetworkEvent::DiscoveryResults { .. }
+            | NetworkEvent::DiscoveryFailed { .. }
+            | NetworkEvent::DiscoveryExpired { .. } => {}
         }
     }
 }

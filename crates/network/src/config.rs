@@ -19,6 +19,8 @@ pub struct NetworkConfig {
     pub max_connections_per_peer: u32,
     /// Memory threshold after which new connections are denied.
     pub max_process_memory_bytes: usize,
+    /// Maximum registrations accepted from one discovery response.
+    pub max_discovery_results: usize,
 }
 
 impl Default for NetworkConfig {
@@ -31,6 +33,7 @@ impl Default for NetworkConfig {
             max_established_connections: 64,
             max_connections_per_peer: 4,
             max_process_memory_bytes: 512 * 1024 * 1024,
+            max_discovery_results: 32,
         }
     }
 }
@@ -45,5 +48,7 @@ impl NetworkConfig {
             && self.max_connections_per_peer > 0
             && self.max_connections_per_peer <= self.max_established_connections
             && self.max_process_memory_bytes >= 16 * 1024 * 1024
+            && self.max_discovery_results > 0
+            && self.max_discovery_results <= 256
     }
 }

@@ -15,7 +15,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    NetworkConfig, NetworkError,
+    DiscoveredPeer, DiscoveryNamespace, DiscoveryProvider, NetworkConfig, NetworkError,
     behaviour::{Behaviour, BehaviourEvent},
 };
 
@@ -67,6 +67,30 @@ pub enum NetworkEvent {
         /// Authenticated remote source identity.
         source_peer: PeerId,
     },
+    /// Local registration was accepted by a Rendezvous node.
+    DiscoveryRegistered {
+        /// Rendezvous node identity.
+        node: PeerId,
+        /// Effective registration lifetime.
+        ttl_seconds: u64,
+    },
+    /// A bounded candidate page was returned by a Rendezvous node.
+    DiscoveryResults {
+        /// Rendezvous node identity.
+        node: PeerId,
+        /// Signed candidate records truncated to the configured bound.
+        peers: Vec<DiscoveredPeer>,
+    },
+    /// A registration or discovery request failed safely.
+    DiscoveryFailed {
+        /// Rendezvous node identity.
+        node: PeerId,
+    },
+    /// A previously discovered peer record reached its advertised expiry.
+    DiscoveryExpired {
+        /// Authenticated peer whose cached record expired.
+        peer: PeerId,
+    },
 }
 
 enum Command {
@@ -88,6 +112,32 @@ enum Command {
     Respond {
         request_id: InboundRequestId,
         response: TransferResponse,
+        result: oneshot::Sender<Result<(), NetworkError>>,
+    },
+    Discovery(DiscoveryCommand),
+}
+
+enum DiscoveryCommand {
+    AddAddress {
+        address: Multiaddr,
+        result: oneshot::Sender<Result<(), NetworkError>>,
+    },
+    Register {
+        node: PeerId,
+        node_address: Multiaddr,
+        namespace: DiscoveryNamespace,
+        ttl_seconds: u64,
+        result: oneshot::Sender<Result<(), NetworkError>>,
+    },
+    Discover {
+        node: PeerId,
+        node_address: Multiaddr,
+        namespace: DiscoveryNamespace,
+        result: oneshot::Sender<Result<(), NetworkError>>,
+    },
+    Unregister {
+        node: PeerId,
+        namespace: DiscoveryNamespace,
         result: oneshot::Sender<Result<(), NetworkError>>,
     },
 }
@@ -183,6 +233,70 @@ impl NetworkClient {
     }
 }
 
+#[async_trait::async_trait]
+impl DiscoveryProvider for NetworkClient {
+    async fn add_discovery_address(&self, address: Multiaddr) -> Result<(), NetworkError> {
+        let (result, receiver) = oneshot::channel();
+        self.send(Command::Discovery(DiscoveryCommand::AddAddress {
+            address,
+            result,
+        }))
+        .await?;
+        receiver.await.map_err(|_| NetworkError::TaskStopped)?
+    }
+
+    async fn register(
+        &self,
+        node: PeerId,
+        node_address: Multiaddr,
+        namespace: DiscoveryNamespace,
+        ttl_seconds: u64,
+    ) -> Result<(), NetworkError> {
+        let (result, receiver) = oneshot::channel();
+        self.send(Command::Discovery(DiscoveryCommand::Register {
+            node,
+            node_address,
+            namespace,
+            ttl_seconds,
+            result,
+        }))
+        .await?;
+        receiver.await.map_err(|_| NetworkError::TaskStopped)?
+    }
+
+    async fn discover(
+        &self,
+        node: PeerId,
+        node_address: Multiaddr,
+        namespace: DiscoveryNamespace,
+    ) -> Result<(), NetworkError> {
+        let (result, receiver) = oneshot::channel();
+        self.send(Command::Discovery(DiscoveryCommand::Discover {
+            node,
+            node_address,
+            namespace,
+            result,
+        }))
+        .await?;
+        receiver.await.map_err(|_| NetworkError::TaskStopped)?
+    }
+
+    async fn unregister(
+        &self,
+        node: PeerId,
+        namespace: DiscoveryNamespace,
+    ) -> Result<(), NetworkError> {
+        let (result, receiver) = oneshot::channel();
+        self.send(Command::Discovery(DiscoveryCommand::Unregister {
+            node,
+            namespace,
+            result,
+        }))
+        .await?;
+        receiver.await.map_err(|_| NetworkError::TaskStopped)?
+    }
+}
+
 /// Tokio-owned swarm driver. Exactly one task must call [`Self::run`].
 pub struct NetworkDriver {
     swarm: Swarm<Behaviour>,
@@ -192,6 +306,7 @@ pub struct NetworkDriver {
     inbound: HashMap<InboundRequestId, ResponseChannel<TransferResponse>>,
     inbound_protocol_ids: HashMap<request_response::InboundRequestId, InboundRequestId>,
     next_inbound_id: u64,
+    max_discovery_results: usize,
 }
 
 impl NetworkDriver {
@@ -247,6 +362,7 @@ impl NetworkDriver {
                 inbound: HashMap::new(),
                 inbound_protocol_ids: HashMap::new(),
                 next_inbound_id: 1,
+                max_discovery_results: config.max_discovery_results,
             },
         ))
     }
@@ -322,6 +438,67 @@ impl NetworkDriver {
                     .retain(|_, application_id| *application_id != request_id);
                 let _ = result.send(outcome);
             }
+            Command::Discovery(command) => self.handle_discovery_command(command),
+        }
+    }
+
+    fn handle_discovery_command(&mut self, command: DiscoveryCommand) {
+        match command {
+            DiscoveryCommand::AddAddress { address, result } => {
+                self.swarm.add_external_address(address);
+                let _ = result.send(Ok(()));
+            }
+            DiscoveryCommand::Register {
+                node,
+                node_address,
+                namespace,
+                ttl_seconds,
+                result,
+            } => {
+                self.swarm.add_peer_address(node, node_address);
+                let outcome = if ttl_seconds == 0 || ttl_seconds > 86_400 {
+                    Err(NetworkError::Configuration)
+                } else {
+                    namespace.to_rendezvous().and_then(|namespace| {
+                        self.swarm
+                            .behaviour_mut()
+                            .rendezvous
+                            .register(namespace, node, Some(ttl_seconds))
+                            .map_err(|_| NetworkError::Configuration)
+                    })
+                };
+                let _ = result.send(outcome);
+            }
+            DiscoveryCommand::Discover {
+                node,
+                node_address,
+                namespace,
+                result,
+            } => {
+                self.swarm.add_peer_address(node, node_address);
+                let outcome = namespace.to_rendezvous().map(|namespace| {
+                    self.swarm.behaviour_mut().rendezvous.discover(
+                        Some(namespace),
+                        None,
+                        u64::try_from(self.max_discovery_results).ok(),
+                        node,
+                    );
+                });
+                let _ = result.send(outcome);
+            }
+            DiscoveryCommand::Unregister {
+                node,
+                namespace,
+                result,
+            } => {
+                let outcome = namespace.to_rendezvous().map(|namespace| {
+                    self.swarm
+                        .behaviour_mut()
+                        .rendezvous
+                        .unregister(namespace, node);
+                });
+                let _ = result.send(outcome);
+            }
         }
     }
 
@@ -332,6 +509,9 @@ impl NetworkDriver {
             }
             SwarmEvent::Behaviour(BehaviourEvent::Relay(event)) => {
                 self.handle_relay_event(&event);
+            }
+            SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(event)) => {
+                self.handle_rendezvous_event(event);
             }
             SwarmEvent::NewListenAddr { address, .. } => {
                 let _ = self.events.try_send(NetworkEvent::Listening { address });
@@ -403,6 +583,49 @@ impl NetworkDriver {
                 NetworkEvent::InboundRelayCircuit {
                     source_peer: *src_peer_id,
                 }
+            }
+        };
+        let _ = self.events.try_send(event);
+    }
+
+    fn handle_rendezvous_event(&mut self, event: libp2p::rendezvous::client::Event) {
+        let event = match event {
+            libp2p::rendezvous::client::Event::Registered {
+                rendezvous_node,
+                ttl,
+                ..
+            } => NetworkEvent::DiscoveryRegistered {
+                node: rendezvous_node,
+                ttl_seconds: ttl,
+            },
+            libp2p::rendezvous::client::Event::Discovered {
+                rendezvous_node,
+                registrations,
+                ..
+            } => {
+                let peers = registrations
+                    .into_iter()
+                    .take(self.max_discovery_results)
+                    .map(|registration| DiscoveredPeer {
+                        peer: registration.record.peer_id(),
+                        addresses: registration.record.addresses().to_vec(),
+                    })
+                    .collect();
+                NetworkEvent::DiscoveryResults {
+                    node: rendezvous_node,
+                    peers,
+                }
+            }
+            libp2p::rendezvous::client::Event::DiscoverFailed {
+                rendezvous_node, ..
+            }
+            | libp2p::rendezvous::client::Event::RegisterFailed {
+                rendezvous_node, ..
+            } => NetworkEvent::DiscoveryFailed {
+                node: rendezvous_node,
+            },
+            libp2p::rendezvous::client::Event::Expired { peer } => {
+                NetworkEvent::DiscoveryExpired { peer }
             }
         };
         let _ = self.events.try_send(event);
