@@ -1,0 +1,42 @@
+[package]
+name = "fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+code = { path = "../crates/code" }
+crypto = { path = "../crates/crypto" }
+libfuzzer-sys = "0.4.10"
+protocol = { path = "../crates/protocol" }
+
+[[bin]]
+name = "capability"
+path = "fuzz_targets/capability.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "transcript"
+path = "fuzz_targets/transcript.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cbor"
+path = "fuzz_targets/cbor.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "frame"
+path = "fuzz_targets/frame.rs"
+test = false
+doc = false
+bench = false

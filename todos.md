@@ -38,9 +38,9 @@ tests, documentation, and relevant verification commands pass.
       acknowledgement, expiration, and delivery-unknown transitions.
 - [x] Implement receiver-side proof verification, key derivation, decryption, and
       envelope validation.
-- [ ] Add unit, property, concurrency, golden-vector, malformed-input, oversized
+- [x] Add unit, property, concurrency, golden-vector, malformed-input, oversized
       frame, two-receiver race, retry, and acknowledgement-loss tests.
-- [ ] Add fuzz targets and seed corpora for capability, transcript, CBOR, and frame
+- [x] Add fuzz targets and seed corpora for capability, transcript, CBOR, and frame
       decoders.
 
 ## Phase 2 — Direct transfer and safe local workflows

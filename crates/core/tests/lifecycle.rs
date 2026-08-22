@@ -1,6 +1,10 @@
 //! Adversarial sender and receiver lifecycle tests.
 
-use std::time::{Duration, Instant};
+use std::{
+    sync::{Arc, Barrier, mpsc},
+    thread,
+    time::{Duration, Instant},
+};
 
 use app_core::{CoreError, OfferEntropy, ReceiverSession, SenderActor, SenderState};
 use code::ShareCodeSecret;
@@ -228,5 +232,42 @@ fn tampering_any_authenticated_offer_field_is_rejected() -> Result<(), CoreError
         receiver.verify_offer(&tampered),
         Err(CoreError::Transfer)
     ));
+    Ok(())
+}
+
+#[test]
+fn concurrent_receivers_are_serialized_to_exactly_one_winner() -> Result<(), CoreError> {
+    let now = Instant::now();
+    let mut sender = sender(now)?;
+    let barrier = Arc::new(Barrier::new(3));
+    let (requests, incoming) = mpsc::channel();
+    thread::scope(|scope| {
+        for (peer_id, nonce) in [(RECEIVER_ONE, 1), (RECEIVER_TWO, 2)] {
+            let requests = requests.clone();
+            let barrier = Arc::clone(&barrier);
+            scope.spawn(move || {
+                barrier.wait();
+                let request = receiver(peer_id, nonce).and_then(|session| session.open_request());
+                let _ = requests.send((peer_id, request));
+            });
+        }
+        barrier.wait();
+    });
+    drop(requests);
+
+    let mut entropy = FixedEntropy::working();
+    let mut winners = 0;
+    let mut already_claimed = 0;
+    for _ in 0..2 {
+        let (peer_id, request) = incoming.recv().map_err(|_| CoreError::Internal)?;
+        match sender.handle_open(peer_id, &request?, now, &mut entropy) {
+            Ok(_) => winners += 1,
+            Err(ProtocolErrorCode::ShareAlreadyClaimed) => already_claimed += 1,
+            Err(_) => return Err(CoreError::Transfer),
+        }
+    }
+    assert_eq!(winners, 1);
+    assert_eq!(already_claimed, 1);
+    assert_eq!(sender.state(), SenderState::Disclosed);
     Ok(())
 }
