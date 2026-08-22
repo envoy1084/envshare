@@ -105,7 +105,7 @@ tests, documentation, and relevant verification commands pass.
 
 - [x] Implement validated node configuration with absolute safety ceilings.
 - [x] Implement bounded per-IP/per-peer admission control and overload shedding.
-- [ ] Implement loopback health, readiness, graceful drain, and OpenMetrics
+- [x] Implement loopback health, readiness, graceful drain, and OpenMetrics
       endpoints with low-cardinality labels.
 - [ ] Add safe JSON logs and optional OTLP tracing behind a feature flag.
 - [ ] Add Dockerfile, Compose, native systemd service, sample configuration,

@@ -35,6 +35,8 @@ connection_attempts_per_ip_per_minute = 120
 connection_rate_limit_ips = 4096
 max_process_memory_bytes = 1073741824
 event_capacity = 256
+operations_address = "127.0.0.1:9090"
+shutdown_grace_period = "30s"
 
 discovery_min_ttl_seconds = 30
 discovery_max_ttl_seconds = 300
@@ -64,3 +66,19 @@ buckets. Authenticated peers are independently bounded by transport connections,
 relay reservations/circuits, discovery storage, and discovery request rates.
 When any bound or rate-map capacity is exhausted, the node rejects new work
 without allocating unbounded state.
+
+## Health, readiness, metrics, and drain
+
+The operations listener accepts loopback addresses only. It serves:
+
+- `GET /healthz`: `200` while the node task is alive;
+- `GET /readyz`: `200` only after a libp2p listener is ready and before drain;
+- `GET /metrics`: `OpenMetrics` 1.0 counters and gauges with no peer, address,
+  namespace, capability, or payload labels.
+
+Requests are capped at 8 KiB, I/O has a two-second deadline, and at most 32
+connections are handled concurrently. On an interrupt, readiness drops and
+libp2p listeners close immediately. Existing peer connections continue until
+they disconnect or `shutdown_grace_period` expires; the operations endpoint
+stays live during that interval and then shuts down without detached request
+tasks.

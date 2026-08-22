@@ -6,7 +6,8 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 use node::{
-    NodeConfig, NodeError, NodeEvent, NodeServer, generate_identity, load_identity, save_identity,
+    NodeConfig, NodeError, NodeEvent, NodeServer, OperationsServer, generate_identity,
+    load_identity, save_identity,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -111,6 +112,22 @@ async fn run_server(arguments: ServeArgs) -> Result<(), NodeError> {
     }
     let (peer_id, mut events, server) =
         NodeServer::new(load_identity(&arguments.identity)?, &config)?;
+    let status = server.status();
+    let operations = match config.operations_address {
+        Some(address) => Some(OperationsServer::bind(address, status).await?),
+        None => None,
+    };
+    let operations_cancel = CancellationToken::new();
+    let operations_enabled = operations.is_some();
+    let operations_wait = operations_cancel.clone();
+    let mut operations_task = tokio::spawn(async move {
+        if let Some(server) = operations {
+            server.run(operations_wait).await
+        } else {
+            operations_wait.cancelled().await;
+            Ok(())
+        }
+    });
     if arguments.json {
         println!(
             "{}",
@@ -120,23 +137,53 @@ async fn run_server(arguments: ServeArgs) -> Result<(), NodeError> {
         println!("Node peer: {peer_id}");
     }
     let cancellation = CancellationToken::new();
-    let mut server_task = tokio::spawn(server.run(cancellation.clone()));
-    loop {
+    let mut server_task =
+        tokio::spawn(server.run_graceful(cancellation.clone(), config.shutdown_grace_period));
+    let mut operations_finished = false;
+    let result = loop {
         tokio::select! {
             interrupted = tokio::signal::ctrl_c() => {
-                interrupted.map_err(|_| NodeError::Configuration)?;
                 cancellation.cancel();
-                return server_task.await.map_err(|_| NodeError::Configuration)?;
+                let node_result = flatten_node_task(server_task.await);
+                break if interrupted.is_err() {
+                    Err(NodeError::Configuration)
+                } else {
+                    node_result
+                };
             }
             result = &mut server_task => {
-                return result.map_err(|_| NodeError::Configuration)?;
+                break flatten_node_task(result);
+            }
+            result = &mut operations_task, if operations_enabled && !operations_finished => {
+                operations_finished = true;
+                cancellation.cancel();
+                let operations_result = flatten_operations_task(result);
+                let node_result = flatten_node_task(server_task.await);
+                break operations_result.and(node_result);
             }
             event = events.recv() => {
                 let Some(event) = event else { continue };
                 print_event(arguments.json, event);
             }
         }
+    };
+    operations_cancel.cancel();
+    if !operations_finished {
+        flatten_operations_task(operations_task.await)?;
     }
+    result
+}
+
+fn flatten_node_task(
+    result: Result<Result<(), NodeError>, tokio::task::JoinError>,
+) -> Result<(), NodeError> {
+    result.map_err(|_| NodeError::Configuration)?
+}
+
+fn flatten_operations_task(
+    result: Result<Result<(), NodeError>, tokio::task::JoinError>,
+) -> Result<(), NodeError> {
+    result.map_err(|_| NodeError::Operations)?
 }
 
 fn print_event(json: bool, event: NodeEvent) {

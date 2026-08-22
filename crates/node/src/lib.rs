@@ -5,12 +5,16 @@
 mod admission;
 mod config;
 mod identity;
+mod operations;
 mod relay;
 mod rendezvous;
+mod telemetry;
 
 pub use config::NodeConfig;
 pub use identity::{generate_identity, load_identity, save_identity};
+pub use operations::OperationsServer;
 pub use relay::{NodeEvent, NodeServer};
+pub use telemetry::NodeStatus;
 
 /// Secret-safe node service failures.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
@@ -24,4 +28,7 @@ pub enum NodeError {
     /// A listener could not be started.
     #[error("node listen operation failed")]
     Listen,
+    /// The loopback operations listener could not start or serve.
+    #[error("node operations endpoint failed")]
+    Operations,
 }

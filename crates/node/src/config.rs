@@ -1,6 +1,6 @@
 //! Validated relay service bounds.
 
-use std::{path::Path, time::Duration};
+use std::{net::SocketAddr, path::Path, time::Duration};
 
 use app_core::read_bounded;
 use libp2p::Multiaddr;
@@ -49,6 +49,11 @@ pub struct NodeConfig {
     pub max_process_memory_bytes: usize,
     /// Capacity of the safe operational event stream.
     pub event_capacity: usize,
+    /// Loopback HTTP address for health, readiness, and `OpenMetrics`.
+    pub operations_address: Option<SocketAddr>,
+    /// Maximum graceful shutdown drain period.
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub shutdown_grace_period: Duration,
     /// Minimum accepted discovery registration lifetime.
     pub discovery_min_ttl_seconds: u64,
     /// Maximum accepted discovery registration lifetime.
@@ -102,6 +107,8 @@ impl Default for NodeConfig {
             connection_rate_limit_ips: 4_096,
             max_process_memory_bytes: 1024 * 1024 * 1024,
             event_capacity: 256,
+            operations_address: Some(([127, 0, 0, 1], 9_090).into()),
+            shutdown_grace_period: Duration::from_secs(30),
             discovery_min_ttl_seconds: 30,
             discovery_max_ttl_seconds: 300,
             discovery_registrations_per_peer: 8,
@@ -177,6 +184,10 @@ impl NodeConfig {
             && self.max_process_memory_bytes >= 64 * 1024 * 1024
             && self.max_process_memory_bytes <= MAX_PROCESS_MEMORY_BYTES
             && (1..=8_192).contains(&self.event_capacity)
+            && self
+                .operations_address
+                .is_none_or(|address| address.ip().is_loopback())
+            && self.shutdown_grace_period <= Duration::from_mins(5)
             && self.discovery_min_ttl_seconds > 0
             && self.discovery_min_ttl_seconds <= self.discovery_max_ttl_seconds
             && self.discovery_max_ttl_seconds <= 86_400
@@ -235,11 +246,14 @@ mod tests {
 listen_addresses = ["/ip4/127.0.0.1/tcp/0"]
 reservation_duration = "30m"
 max_circuit_duration = "45s"
+operations_address = "127.0.0.1:0"
+shutdown_grace_period = "5s"
 "#,
         )?;
 
         assert_eq!(config.reservation_duration, Duration::from_mins(30));
         assert_eq!(config.max_circuit_duration, Duration::from_secs(45));
+        assert_eq!(config.operations_address, Some(([127, 0, 0, 1], 0).into()));
         assert!(toml::from_str::<NodeConfig>("unknown = 1").is_err());
         Ok(())
     }

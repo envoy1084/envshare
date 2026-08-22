@@ -80,6 +80,10 @@ enum Operation {
 }
 
 impl Store {
+    pub(crate) fn len(&self) -> usize {
+        self.registrations.len()
+    }
+
     pub fn new(config: &NodeConfig) -> Self {
         Self {
             config: Limits {

@@ -18,7 +18,7 @@ use libp2p::{
     },
 };
 
-use crate::NodeConfig;
+use crate::{NodeConfig, NodeStatus};
 
 const RATE_WINDOW: Duration = Duration::from_mins(1);
 
@@ -40,10 +40,11 @@ pub(crate) struct Behaviour {
     pending: HashMap<ConnectionId, IpAddr>,
     established: HashMap<ConnectionId, IpAddr>,
     rate: HashMap<IpAddr, RateBucket>,
+    status: NodeStatus,
 }
 
 impl Behaviour {
-    pub(crate) fn new(config: &NodeConfig) -> Self {
+    pub(crate) fn new(config: &NodeConfig, status: NodeStatus) -> Self {
         Self {
             max_connections_per_ip: config.max_connections_per_ip,
             attempts_per_minute: config.connection_attempts_per_ip_per_minute,
@@ -51,6 +52,7 @@ impl Behaviour {
             pending: HashMap::new(),
             established: HashMap::new(),
             rate: HashMap::new(),
+            status,
         }
     }
 
@@ -111,7 +113,11 @@ impl NetworkBehaviour for Behaviour {
         _local_addr: &Multiaddr,
         remote_addr: &Multiaddr,
     ) -> Result<(), ConnectionDenied> {
-        self.admit(connection_id, remote_addr, Instant::now())
+        let result = self.admit(connection_id, remote_addr, Instant::now());
+        if result.is_err() {
+            self.status.admission_rejected();
+        }
+        result
     }
 
     fn handle_established_inbound_connection(
@@ -193,7 +199,7 @@ mod tests {
     #[test]
     fn per_ip_connection_and_attempt_limits_shed_overload() -> Result<(), Box<dyn std::error::Error>>
     {
-        let mut admission = Behaviour::new(&config());
+        let mut admission = Behaviour::new(&config(), NodeStatus::default());
         let now = Instant::now();
         let address = "/ip4/192.0.2.1/tcp/4001".parse()?;
         admission.admit(ConnectionId::new_unchecked(1), &address, now)?;
@@ -217,7 +223,7 @@ mod tests {
     #[test]
     fn rate_bucket_cardinality_is_bounded_and_expired_entries_are_reused()
     -> Result<(), Box<dyn std::error::Error>> {
-        let mut admission = Behaviour::new(&config());
+        let mut admission = Behaviour::new(&config(), NodeStatus::default());
         let now = Instant::now();
         for (id, address) in ["/ip4/192.0.2.1/tcp/1", "/ip4/192.0.2.2/tcp/1"]
             .into_iter()

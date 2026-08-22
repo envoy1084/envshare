@@ -1,6 +1,7 @@
 //! Bounded Circuit Relay v2 server.
 
 use futures::StreamExt;
+use libp2p::core::transport::ListenerId;
 use libp2p::{
     Multiaddr, PeerId, Swarm, SwarmBuilder, identify, memory_connection_limits, ping, relay,
     request_response,
@@ -9,7 +10,7 @@ use libp2p::{
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use crate::{NodeConfig, NodeError, admission, rendezvous};
+use crate::{NodeConfig, NodeError, NodeStatus, admission, rendezvous};
 
 #[derive(NetworkBehaviour)]
 struct Behaviour {
@@ -91,6 +92,7 @@ pub struct NodeServer {
     listen_addresses: Vec<Multiaddr>,
     events: mpsc::Sender<NodeEvent>,
     discovery: rendezvous::Store,
+    status: NodeStatus,
 }
 
 impl NodeServer {
@@ -107,7 +109,8 @@ impl NodeServer {
             return Err(NodeError::Configuration);
         }
         let peer_id = keypair.public().to_peer_id();
-        let behaviour = build_behaviour(&keypair, peer_id, config);
+        let status = NodeStatus::default();
+        let behaviour = build_behaviour(&keypair, peer_id, config, status.clone());
         let swarm = SwarmBuilder::with_existing_identity(keypair)
             .with_tokio()
             .with_tcp(
@@ -129,8 +132,15 @@ impl NodeServer {
                 listen_addresses: config.listen_addresses.clone(),
                 events,
                 discovery: rendezvous::Store::new(config),
+                status,
             },
         ))
+    }
+
+    /// Returns shared non-secret health and metric state.
+    #[must_use]
+    pub fn status(&self) -> NodeStatus {
+        self.status.clone()
     }
 
     /// Binds configured listeners and runs until cancellation.
@@ -139,31 +149,106 @@ impl NodeServer {
     ///
     /// Returns if any configured listener cannot be started.
     pub async fn run(mut self, cancellation: CancellationToken) -> Result<(), NodeError> {
+        self.run_loop(cancellation, None).await
+    }
+
+    /// Runs until cancellation, then drains established peers up to a deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns if any configured listener cannot be started.
+    pub async fn run_graceful(
+        mut self,
+        cancellation: CancellationToken,
+        grace_period: std::time::Duration,
+    ) -> Result<(), NodeError> {
+        self.run_loop(cancellation, Some(grace_period)).await
+    }
+
+    async fn run_loop(
+        &mut self,
+        cancellation: CancellationToken,
+        grace_period: Option<std::time::Duration>,
+    ) -> Result<(), NodeError> {
+        self.status.start();
+        let result = self.serve(cancellation, grace_period).await;
+        self.status.stop();
+        result
+    }
+
+    async fn serve(
+        &mut self,
+        cancellation: CancellationToken,
+        grace_period: Option<std::time::Duration>,
+    ) -> Result<(), NodeError> {
+        let mut listeners = Vec::with_capacity(self.listen_addresses.len());
         for address in self.listen_addresses.drain(..) {
-            self.swarm
-                .listen_on(address)
-                .map_err(|_| NodeError::Listen)?;
+            listeners.push(
+                self.swarm
+                    .listen_on(address)
+                    .map_err(|_| NodeError::Listen)?,
+            );
         }
         let mut expiry = tokio::time::interval(std::time::Duration::from_secs(1));
         expiry.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
             tokio::select! {
-                () = cancellation.cancelled() => return Ok(()),
+                () = cancellation.cancelled() => {
+                    let Some(grace_period) = grace_period else { return Ok(()) };
+                    return self.drain(listeners, grace_period, &mut expiry).await;
+                },
                 event = self.swarm.select_next_some() => self.handle_event(event),
-                _ = expiry.tick() => {
-                    for peer in self.discovery.expire(std::time::Instant::now()) {
-                        let _ = self.events.try_send(NodeEvent::DiscoveryUnregistered { peer });
-                    }
-                }
+                _ = expiry.tick() => self.expire_discovery(),
             }
         }
+    }
+
+    async fn drain(
+        &mut self,
+        listeners: Vec<ListenerId>,
+        grace_period: std::time::Duration,
+        expiry: &mut tokio::time::Interval,
+    ) -> Result<(), NodeError> {
+        self.status.begin_drain();
+        for listener in listeners {
+            self.swarm.remove_listener(listener);
+        }
+        let deadline = tokio::time::sleep(grace_period);
+        tokio::pin!(deadline);
+        loop {
+            if self.swarm.connected_peers().next().is_none() {
+                return Ok(());
+            }
+            tokio::select! {
+                () = &mut deadline => return Ok(()),
+                event = self.swarm.select_next_some() => self.handle_event(event),
+                _ = expiry.tick() => self.expire_discovery(),
+            }
+        }
+    }
+
+    fn expire_discovery(&mut self) {
+        for peer in self.discovery.expire(std::time::Instant::now()) {
+            self.emit(NodeEvent::DiscoveryUnregistered { peer });
+        }
+        self.status
+            .set_discovery_registrations(self.discovery.len());
     }
 
     fn handle_event(&mut self, event: SwarmEvent<BehaviourEvent>) {
         let event = match event {
             SwarmEvent::NewListenAddr { address, .. } => {
                 self.swarm.add_external_address(address.clone());
+                self.status.listening();
                 Some(NodeEvent::Listening { address })
+            }
+            SwarmEvent::ConnectionEstablished { .. } => {
+                self.status.connection_opened();
+                None
+            }
+            SwarmEvent::ConnectionClosed { .. } => {
+                self.status.connection_closed();
+                None
             }
             SwarmEvent::Behaviour(BehaviourEvent::Relay(
                 relay::Event::ReservationReqAccepted {
@@ -203,7 +288,27 @@ impl NodeServer {
             _ => None,
         };
         if let Some(event) = event {
-            let _ = self.events.try_send(event);
+            self.emit(event);
+        }
+    }
+
+    fn emit(&self, event: NodeEvent) {
+        match &event {
+            NodeEvent::ReservationAccepted { renewed, .. } => {
+                self.status.reservation_accepted(*renewed);
+            }
+            NodeEvent::ReservationClosed { .. } => self.status.reservation_closed(),
+            NodeEvent::ReservationDenied { .. } => self.status.reservation_denied(),
+            NodeEvent::CircuitAccepted { .. } => self.status.circuit_accepted(),
+            NodeEvent::CircuitDenied { .. } => self.status.circuit_denied(),
+            NodeEvent::DiscoveryRejected { .. } => self.status.discovery_rejected(),
+            NodeEvent::Listening { .. }
+            | NodeEvent::DiscoveryRegistered { .. }
+            | NodeEvent::DiscoveryUnregistered { .. }
+            | NodeEvent::DiscoveryServed { .. } => {}
+        }
+        if self.events.try_send(event).is_err() {
+            self.status.event_dropped();
         }
     }
 
@@ -219,10 +324,9 @@ impl NodeServer {
         else {
             return None;
         };
+        self.status.discovery_request();
         for expired_peer in self.discovery.expire(std::time::Instant::now()) {
-            let _ = self
-                .events
-                .try_send(NodeEvent::DiscoveryUnregistered { peer: expired_peer });
+            self.emit(NodeEvent::DiscoveryUnregistered { peer: expired_peer });
         }
         let rendezvous::Handled { response, event } =
             self.discovery
@@ -237,7 +341,7 @@ impl NodeServer {
         {
             return Some(NodeEvent::DiscoveryRejected { peer });
         }
-        Some(match event {
+        let event = match event {
             rendezvous::Event::Registered { peer } => NodeEvent::DiscoveryRegistered { peer },
             rendezvous::Event::Unregistered { peer } => NodeEvent::DiscoveryUnregistered { peer },
             rendezvous::Event::Served { peer, count } => NodeEvent::DiscoveryServed {
@@ -245,7 +349,10 @@ impl NodeServer {
                 result_count: count,
             },
             rendezvous::Event::Rejected { peer } => NodeEvent::DiscoveryRejected { peer },
-        })
+        };
+        self.status
+            .set_discovery_registrations(self.discovery.len());
+        Some(event)
     }
 }
 
@@ -253,6 +360,7 @@ fn build_behaviour(
     keypair: &libp2p::identity::Keypair,
     peer_id: PeerId,
     config: &NodeConfig,
+    status: NodeStatus,
 ) -> Behaviour {
     let relay_config = relay::Config {
         max_reservations: config.max_reservations,
@@ -270,7 +378,7 @@ fn build_behaviour(
         .with_max_established(Some(config.max_connections))
         .with_max_established_per_peer(Some(config.max_connections_per_peer));
     Behaviour {
-        admission: admission::Behaviour::new(config),
+        admission: admission::Behaviour::new(config, status),
         relay: relay::Behaviour::new(peer_id, relay_config),
         rendezvous: rendezvous::behaviour(),
         identify: identify::Behaviour::new(
