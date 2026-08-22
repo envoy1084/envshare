@@ -35,7 +35,7 @@ connection_attempts_per_ip_per_minute = 120
 connection_rate_limit_ips = 4096
 max_process_memory_bytes = 1073741824
 event_capacity = 256
-operations_address = "127.0.0.1:9090"
+operations_address = "127.0.0.1:9100"
 shutdown_grace_period = "30s"
 
 discovery_min_ttl_seconds = 30
@@ -90,6 +90,17 @@ libp2p listeners close immediately. Existing peer connections continue until
 they disconnect or `shutdown_grace_period` expires; the operations endpoint
 stays live during that interval and then shuts down without detached request
 tasks.
+
+Container and service managers can check readiness without adding an HTTP tool
+to the runtime image:
+
+```console
+envshare-node healthcheck --url http://127.0.0.1:9100/health/ready
+```
+
+The command accepts plain HTTP, loopback socket addresses, and the canonical
+liveness/readiness paths only. It caps the response at 4 KiB and the entire
+check at three seconds. Both Ctrl-C and `SIGTERM` trigger graceful drain.
 
 ## Logs and optional tracing
 

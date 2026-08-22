@@ -145,7 +145,7 @@ impl Default for NodeConfig {
             connection_rate_limit_ips: 4_096,
             max_process_memory_bytes: 1024 * 1024 * 1024,
             event_capacity: 256,
-            operations_address: Some(([127, 0, 0, 1], 9_090).into()),
+            operations_address: Some(([127, 0, 0, 1], 9_100).into()),
             shutdown_grace_period: Duration::from_secs(30),
             discovery_min_ttl_seconds: 30,
             discovery_max_ttl_seconds: 300,

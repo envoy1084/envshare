@@ -2,7 +2,7 @@
 
 #![forbid(unsafe_code)]
 
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
 use clap::{Args, Parser, Subcommand};
 use logging::TelemetryGuard;
@@ -10,6 +10,7 @@ use node::{
     LogFormat, NodeConfig, NodeError, NodeEvent, NodeServer, OperationsServer, generate_identity,
     load_identity, save_identity,
 };
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio_util::sync::CancellationToken;
 use tracing::Instrument as _;
 
@@ -28,6 +29,8 @@ enum Command {
     Key(KeyArgs),
     /// Run the bounded relay service.
     Serve(ServeArgs),
+    /// Check a loopback node health endpoint.
+    Healthcheck(HealthcheckArgs),
 }
 
 #[derive(Debug, Args)]
@@ -71,6 +74,13 @@ struct ServeArgs {
     json: bool,
 }
 
+#[derive(Debug, Args)]
+struct HealthcheckArgs {
+    /// Loopback HTTP liveness or readiness URL.
+    #[arg(long, default_value = "http://127.0.0.1:9100/health/ready")]
+    url: String,
+}
+
 #[tokio::main]
 async fn main() {
     if let Err(error) = run(Cli::parse()).await {
@@ -83,6 +93,7 @@ async fn run(cli: Cli) -> Result<(), NodeError> {
     match cli.command {
         Command::Key(arguments) => run_key(arguments),
         Command::Serve(arguments) => run_server(arguments).await,
+        Command::Healthcheck(arguments) => run_healthcheck(&arguments.url).await,
     }
 }
 
@@ -151,12 +162,14 @@ async fn run_server_config(
         println!("Node peer: {peer_id}");
     }
     let cancellation = CancellationToken::new();
+    let shutdown = shutdown_signal();
+    tokio::pin!(shutdown);
     let mut server_task =
         tokio::spawn(server.run_graceful(cancellation.clone(), config.shutdown_grace_period));
     let mut operations_finished = false;
     let result = loop {
         tokio::select! {
-            interrupted = tokio::signal::ctrl_c() => {
+            interrupted = &mut shutdown => {
                 cancellation.cancel();
                 let node_result = flatten_node_task(server_task.await);
                 break if interrupted.is_err() {
@@ -186,6 +199,68 @@ async fn run_server_config(
         flatten_operations_task(operations_task.await)?;
     }
     result
+}
+
+async fn shutdown_signal() -> Result<(), std::io::Error> {
+    #[cfg(unix)]
+    {
+        let mut terminate =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+        tokio::select! {
+            result = tokio::signal::ctrl_c() => result,
+            _ = terminate.recv() => Ok(()),
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c().await
+    }
+}
+
+async fn run_healthcheck(url: &str) -> Result<(), NodeError> {
+    let (address, path) = parse_healthcheck_url(url)?;
+    let check = async {
+        let mut stream = tokio::net::TcpStream::connect(address)
+            .await
+            .map_err(|_| NodeError::Operations)?;
+        stream
+            .write_all(
+                format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                    .as_bytes(),
+            )
+            .await
+            .map_err(|_| NodeError::Operations)?;
+        let mut response = Vec::with_capacity(1_024);
+        stream
+            .take(4_096)
+            .read_to_end(&mut response)
+            .await
+            .map_err(|_| NodeError::Operations)?;
+        response
+            .starts_with(b"HTTP/1.1 200 ")
+            .then_some(())
+            .ok_or(NodeError::Operations)
+    };
+    tokio::time::timeout(Duration::from_secs(3), check)
+        .await
+        .map_err(|_| NodeError::Operations)?
+}
+
+fn parse_healthcheck_url(url: &str) -> Result<(SocketAddr, &'static str), NodeError> {
+    let value = url
+        .strip_prefix("http://")
+        .ok_or(NodeError::Configuration)?;
+    let (authority, path) = value.split_once('/').ok_or(NodeError::Configuration)?;
+    let address: SocketAddr = authority.parse().map_err(|_| NodeError::Configuration)?;
+    if !address.ip().is_loopback() {
+        return Err(NodeError::Configuration);
+    }
+    let path = match path {
+        "health/live" => "/health/live",
+        "health/ready" => "/health/ready",
+        _ => return Err(NodeError::Configuration),
+    };
+    Ok((address, path))
 }
 
 fn flatten_node_task(
@@ -268,6 +343,33 @@ mod tests {
             event_json("starting"),
             serde_json::json!({ "event": "starting" })
         );
+        Ok(())
+    }
+
+    #[test]
+    fn healthcheck_urls_are_loopback_and_path_bounded() {
+        assert!(parse_healthcheck_url("http://127.0.0.1:9100/health/ready").is_ok());
+        assert!(parse_healthcheck_url("http://[::1]:9100/health/live").is_ok());
+        assert!(parse_healthcheck_url("https://127.0.0.1:9100/health/ready").is_err());
+        assert!(parse_healthcheck_url("http://192.0.2.1:9100/health/ready").is_err());
+        assert!(parse_healthcheck_url("http://127.0.0.1:9100/metrics").is_err());
+    }
+
+    #[tokio::test]
+    async fn healthcheck_requires_a_success_response() -> Result<(), Box<dyn std::error::Error>> {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
+        let address = listener.local_addr()?;
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await?;
+            let mut request = [0_u8; 256];
+            let _ = stream.read(&mut request).await?;
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nok\n")
+                .await
+        });
+
+        run_healthcheck(&format!("http://{address}/health/ready")).await?;
+        server.await??;
         Ok(())
     }
 }
