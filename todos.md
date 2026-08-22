@@ -71,7 +71,7 @@ tests, documentation, and relevant verification commands pass.
 - [x] Implement client relay reservation, renewal, circuit listener addresses,
       relay dialing, route racing, and opportunistic DCUtR upgrades.
 - [x] Implement node connection/memory limits and safe structured events.
-- [ ] Add relay-only integration, renewal, saturation, byte-limit, duration-limit,
+- [x] Add relay-only integration, renewal, saturation, byte-limit, duration-limit,
       restart, and direct-transport-blocked tests.
 
 ## Phase 4 — Federated discovery

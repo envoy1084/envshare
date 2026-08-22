@@ -190,6 +190,7 @@ pub struct NetworkDriver {
     events: mpsc::Sender<NetworkEvent>,
     outbound: HashMap<OutboundRequestId, oneshot::Sender<Result<TransferResponse, NetworkError>>>,
     inbound: HashMap<InboundRequestId, ResponseChannel<TransferResponse>>,
+    inbound_protocol_ids: HashMap<request_response::InboundRequestId, InboundRequestId>,
     next_inbound_id: u64,
 }
 
@@ -244,6 +245,7 @@ impl NetworkDriver {
                 events,
                 outbound: HashMap::new(),
                 inbound: HashMap::new(),
+                inbound_protocol_ids: HashMap::new(),
                 next_inbound_id: 1,
             },
         ))
@@ -264,6 +266,7 @@ impl NetworkDriver {
         }
         self.outbound.clear();
         self.inbound.clear();
+        self.inbound_protocol_ids.clear();
     }
 
     fn handle_command(&mut self, command: Command) {
@@ -315,6 +318,8 @@ impl NetworkDriver {
                             .send_response(channel, response)
                             .map_err(|_| NetworkError::Response)
                     });
+                self.inbound_protocol_ids
+                    .retain(|_, application_id| *application_id != request_id);
                 let _ = result.send(outcome);
             }
         }
@@ -352,8 +357,10 @@ impl NetworkDriver {
         match event {
             request_response::Event::Message { peer, message, .. } => match message {
                 request_response::Message::Request {
-                    request, channel, ..
-                } => self.handle_inbound_request(peer, request, channel),
+                    request_id,
+                    request,
+                    channel,
+                } => self.handle_inbound_request(peer, request_id, request, channel),
                 request_response::Message::Response {
                     request_id,
                     response,
@@ -368,8 +375,12 @@ impl NetworkDriver {
                     let _ = result.send(Err(NetworkError::Request));
                 }
             }
-            request_response::Event::InboundFailure { .. }
-            | request_response::Event::ResponseSent { .. } => {}
+            request_response::Event::InboundFailure { request_id, .. }
+            | request_response::Event::ResponseSent { request_id, .. } => {
+                if let Some(application_id) = self.inbound_protocol_ids.remove(&request_id) {
+                    self.inbound.remove(&application_id);
+                }
+            }
         }
     }
 
@@ -400,12 +411,14 @@ impl NetworkDriver {
     fn handle_inbound_request(
         &mut self,
         peer: PeerId,
+        protocol_id: request_response::InboundRequestId,
         request: TransferRequest,
         channel: ResponseChannel<TransferResponse>,
     ) {
         let request_id = InboundRequestId(self.next_inbound_id);
         self.next_inbound_id = self.next_inbound_id.wrapping_add(1).max(1);
         self.inbound.insert(request_id, channel);
+        self.inbound_protocol_ids.insert(protocol_id, request_id);
         let event = NetworkEvent::InboundRequest {
             peer,
             request_id,
@@ -414,6 +427,7 @@ impl NetworkDriver {
         if self.events.try_send(event).is_err()
             && let Some(channel) = self.inbound.remove(&request_id)
         {
+            self.inbound_protocol_ids.remove(&protocol_id);
             let response = TransferResponse::Error(ProtocolErrorResponse {
                 protocol_version: PROTOCOL_VERSION,
                 code: ProtocolErrorCode::TemporarilyUnavailable,
