@@ -105,6 +105,7 @@ dist build --tag "v$client_version" --artifacts=lies --output-format=json >/dev/
 shellcheck -s sh install.sh scripts/test-install.sh scripts/release-check.sh
 yq eval '.' .github/workflows/ci.yml >/dev/null
 yq eval '.' .github/workflows/release.yml >/dev/null
+yq eval '.' .github/workflows/container-release.yml >/dev/null
 
 if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoLogo -NoProfile -Command \

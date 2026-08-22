@@ -22,7 +22,10 @@ targets. All project source and release metadata use Apache-2.0 only.
 5. Review the dry-run manifest. It must contain the client archives, Linux node
    archives, SHA-256 files, CycloneDX SBOMs, shell and PowerShell installers,
    Homebrew formula, source archive, and no node archives for macOS or Windows.
-6. Create one annotated, signed tag matching the workspace version exactly, for
+6. Confirm the container workflow is valid. It publishes the node image for
+   `linux/amd64` and `linux/arm64`, attaches SBOM/provenance, and keylessly signs
+   the image index digest.
+7. Create one annotated, signed tag matching the workspace version exactly, for
    example `v0.1.0`, and push only that tag after approval.
 
 The generated release workflow refuses partial publication: all target builds
@@ -58,13 +61,15 @@ Before announcing a release:
 1. Download every asset and compare it with its `.sha256` or `sha256.sum` entry.
 2. Run `gh attestation verify` for every archive, installer, formula, SBOM, and
    checksum, constrained to this repository and the release workflow.
-3. Install through `install.sh` on both glibc architectures and both macOS
+3. Verify the container signature with the command in [deployment](deployment.md),
+   inspect its SBOM/provenance, and record the immutable image index digest.
+4. Install through `install.sh` on both glibc architectures and both macOS
    architectures, through `install.ps1` on x64 Windows, and through the generated
    Homebrew formula on a clean supported macOS system.
-4. Run `envshare --version`, `envshare --help`, and a direct/TCP/relay acceptance
+5. Run `envshare --version`, `envshare --help`, and a direct/TCP/relay acceptance
    transfer on the installed binaries. Exercise `envshare-node config check`,
    liveness, readiness, and graceful shutdown on each Linux node archive.
-5. Confirm release notes still identify the unaudited 0.x security boundary and do not
+6. Confirm release notes still identify the unaudited 0.x security boundary and do not
    describe the project as production-ready for secrets before independent review.
 
 ## Rollback and withdrawal

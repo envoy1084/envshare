@@ -45,6 +45,21 @@ copied into the image, and Compose supplies a read-only root filesystem, dropped
 capabilities, no-new-privileges, bounded memory/PIDs/file descriptors, disabled
 core dumps, and a native readiness check.
 
+Tagged releases publish a signed multi-platform node image for `linux/amd64` and
+`linux/arm64`, including an SBOM and build provenance:
+
+```console
+docker pull ghcr.io/envoy1084/envshare-node:0.1.0
+cosign verify ghcr.io/envoy1084/envshare-node:0.1.0 \
+  --certificate-identity-regexp \
+  'https://github.com/envoy1084/envshare/.github/workflows/container-release.yml@refs/(tags/v0.1.0|heads/main)' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+Pin the resolved `sha256:` image index digest in production instead of a mutable
+tag. The branch identity in the verification expression is needed only for a
+maintainer-dispatched publication of an existing release tag.
+
 From the repository root:
 
 ```console
