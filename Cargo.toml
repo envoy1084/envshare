@@ -1,13 +1,13 @@
 [workspace]
 members = [
-    "crates/envshare-cli",
-    "crates/envshare-code",
-    "crates/envshare-core",
-    "crates/envshare-crypto",
-    "crates/envshare-network",
-    "crates/envshare-node",
-    "crates/envshare-protocol",
-    "crates/envshare-testkit",
+    "crates/cli",
+    "crates/code",
+    "crates/core",
+    "crates/crypto",
+    "crates/network",
+    "crates/node",
+    "crates/protocol",
+    "crates/testkit",
 ]
 resolver = "3"
 
@@ -25,9 +25,13 @@ categories = ["command-line-utilities", "network-programming"]
 [workspace.dependencies]
 anyhow = "1.0.102"
 clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
+code = { version = "=0.1.0-alpha.1", path = "crates/code" }
+app-core = { package = "core", version = "=0.1.0-alpha.1", path = "crates/core" }
+crypto = { version = "=0.1.0-alpha.1", path = "crates/crypto" }
+network = { version = "=0.1.0-alpha.1", path = "crates/network" }
+protocol = { version = "=0.1.0-alpha.1", path = "crates/protocol" }
 libp2p = { version = "0.56.0", default-features = false, features = [
     "dcutr",
-    "dns",
     "ed25519",
     "identify",
     "macros",
@@ -73,4 +77,3 @@ strip = "symbols"
 [profile.dist]
 inherits = "release"
 lto = "fat"
-

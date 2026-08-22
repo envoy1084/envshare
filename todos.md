@@ -8,20 +8,18 @@ tests, documentation, and relevant verification commands pass.
 
 - [x] Create the Rust 2024 workspace, pin the toolchain, centralize dependencies,
       enable workspace lints, and commit `Cargo.lock`.
-- [x] Add initial crates with enforced dependency direction:
-      `envshare-code`, `envshare-crypto`, `envshare-protocol`, `envshare-core`,
-      `envshare-network`, `envshare-cli`, `envshare-node`, and
-      `envshare-testkit`.
-- [ ] Add formatting, Clippy, test, documentation, audit, license, and dependency
+- [x] Add initial crates with enforced dependency direction: `code`, `crypto`,
+      `protocol`, `core`, `network`, `cli`, `node`, and `testkit`.
+- [x] Add formatting, Clippy, test, documentation, audit, license, and dependency
       policy configuration.
-- [ ] Define shared hard limits, typed error boundaries, safe exit codes, and a
+- [x] Define shared hard limits, typed error boundaries, safe exit codes, and a
       no-secret logging policy.
-- [ ] Publish v1 specifications for capability encoding, canonical transcripts,
+- [x] Publish v1 specifications for capability encoding, canonical transcripts,
       cryptographic domains, messages, CDDL, lifecycle semantics, and test-vector
       format.
-- [ ] Add `README.md`, contribution guidance, dual licenses, `SECURITY.md`, threat
+- [x] Add `README.md`, contribution guidance, dual licenses, `SECURITY.md`, threat
       model, architecture overview, and protocol compatibility policy.
-- [ ] Add pull-request CI for Linux, macOS, and Windows with formatting, Clippy,
+- [x] Add pull-request CI for Linux, macOS, and Windows with formatting, Clippy,
       tests, docs, dependency audit, and policy checks.
 
 ## Phase 1 — Capability, cryptography, protocol, and lifecycle

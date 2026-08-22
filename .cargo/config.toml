@@ -1,0 +1,7 @@
+[alias]
+ci-clippy = "clippy --workspace --all-targets --all-features --locked -- -D warnings"
+ci-doc = "doc --workspace --no-deps --locked"
+ci-test = "nextest run --workspace --all-targets --locked"
+
+[term]
+color = "auto"

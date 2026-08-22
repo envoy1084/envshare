@@ -1,0 +1,11 @@
+[advisories]
+ignore = [
+    # Transitive through if-watch/libp2p TCP and QUIC on Linux. This is an
+    # unmaintained proc-macro advisory, not a memory-safety vulnerability.
+    "RUSTSEC-2024-0436",
+    # These Hickory packages are optional entries retained in Cargo.lock by the
+    # libp2p meta-crate. The libp2p `dns` feature is disabled and `cargo tree -i
+    # hickory-proto` confirms they are absent from every compiled target graph.
+    "RUSTSEC-2026-0118",
+    "RUSTSEC-2026-0119",
+]

@@ -1,0 +1,12 @@
+{
+  "format": "envshare-test-vectors",
+  "format_version": 1,
+  "protocol_version": 1,
+  "encoding": "lowercase hexadecimal unless a field name ends in _text",
+  "code_vectors": [],
+  "derivation_vectors": [],
+  "transcript_vectors": [],
+  "proof_vectors": [],
+  "envelope_vectors": [],
+  "invalid_vectors": []
+}

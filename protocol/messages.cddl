@@ -1,0 +1,59 @@
+protocol-version = 1
+room-id = bytes .size 16
+receiver-nonce = bytes .size 32
+sender-nonce = bytes .size 32
+claim-id = bytes .size 16
+proof = bytes .size 32
+digest = bytes .size 32
+aead-nonce = bytes .size 24
+
+open-request = {
+  0: protocol-version,
+  1: room-id,
+  2: receiver-nonce,
+  3: proof
+}
+
+offer-response = {
+  0: protocol-version,
+  1: claim-id,
+  2: sender-nonce,
+  3: aead-nonce,
+  4: uint,            ; sender expiry in Unix milliseconds
+  5: content-type,
+  6: 0..1048576,      ; plaintext length
+  7: bytes,           ; bounded by framing before allocation
+  8: digest,
+  9: proof
+}
+
+acknowledge-request = {
+  0: protocol-version,
+  1: claim-id,
+  2: digest,
+  3: proof
+}
+
+completed-response = {
+  0: protocol-version,
+  1: claim-id
+}
+
+protocol-error = {
+  0: protocol-version,
+  1: error-code
+}
+
+content-type = 0 / 1 ; dotenv-raw / dotenv-normalized
+
+error-code =
+  0 /  ; not-found-or-unauthorized
+  1 /  ; unsupported-version
+  2 /  ; invalid-message
+  3 /  ; share-unavailable
+  4 /  ; share-expired
+  5 /  ; share-already-claimed
+  6 /  ; claim-mismatch
+  7 /  ; payload-too-large
+  8 /  ; internal-failure
+  9    ; temporarily-unavailable
