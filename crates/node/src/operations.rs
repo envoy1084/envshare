@@ -90,18 +90,34 @@ async fn serve_connection(mut stream: TcpStream, status: &NodeStatus) -> Result<
         .ok()
         .and_then(|request| request.lines().next());
     let (code, content_type, body) = match line {
-        Some("GET /healthz HTTP/1.1" | "GET /healthz HTTP/1.0") if status.is_live() => {
-            ("200 OK", "text/plain; charset=utf-8", "ok\n".to_owned())
-        }
-        Some("GET /healthz HTTP/1.1" | "GET /healthz HTTP/1.0") => (
+        Some(
+            "GET /healthz HTTP/1.1"
+            | "GET /healthz HTTP/1.0"
+            | "GET /health/live HTTP/1.1"
+            | "GET /health/live HTTP/1.0",
+        ) if status.is_live() => ("200 OK", "text/plain; charset=utf-8", "ok\n".to_owned()),
+        Some(
+            "GET /healthz HTTP/1.1"
+            | "GET /healthz HTTP/1.0"
+            | "GET /health/live HTTP/1.1"
+            | "GET /health/live HTTP/1.0",
+        ) => (
             "503 Service Unavailable",
             "text/plain; charset=utf-8",
             "unhealthy\n".to_owned(),
         ),
-        Some("GET /readyz HTTP/1.1" | "GET /readyz HTTP/1.0") if status.is_ready() => {
-            ("200 OK", "text/plain; charset=utf-8", "ready\n".to_owned())
-        }
-        Some("GET /readyz HTTP/1.1" | "GET /readyz HTTP/1.0") => (
+        Some(
+            "GET /readyz HTTP/1.1"
+            | "GET /readyz HTTP/1.0"
+            | "GET /health/ready HTTP/1.1"
+            | "GET /health/ready HTTP/1.0",
+        ) if status.is_ready() => ("200 OK", "text/plain; charset=utf-8", "ready\n".to_owned()),
+        Some(
+            "GET /readyz HTTP/1.1"
+            | "GET /readyz HTTP/1.0"
+            | "GET /health/ready HTTP/1.1"
+            | "GET /health/ready HTTP/1.0",
+        ) => (
             "503 Service Unavailable",
             "text/plain; charset=utf-8",
             "not ready\n".to_owned(),
@@ -140,6 +156,7 @@ mod tests {
     async fn health_readiness_and_metrics_follow_node_state()
     -> Result<(), Box<dyn std::error::Error>> {
         let status = NodeStatus::default();
+        status.expect_listeners(1);
         status.start();
         let server = OperationsServer::bind(([127, 0, 0, 1], 0).into(), status.clone()).await?;
         let address = server.local_addr()?;
@@ -147,18 +164,18 @@ mod tests {
         let task = tokio::spawn(server.run(cancellation.clone()));
 
         assert!(
-            request(address, "/healthz")
+            request(address, "/health/live")
                 .await?
                 .starts_with("HTTP/1.1 200")
         );
         assert!(
-            request(address, "/readyz")
+            request(address, "/health/ready")
                 .await?
                 .starts_with("HTTP/1.1 503")
         );
-        status.listening();
+        status.listeners_ready(1);
         assert!(
-            request(address, "/readyz")
+            request(address, "/health/ready")
                 .await?
                 .starts_with("HTTP/1.1 200")
         );

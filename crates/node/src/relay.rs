@@ -1,5 +1,7 @@
 //! Bounded Circuit Relay v2 server.
 
+use std::collections::HashSet;
+
 use futures::StreamExt;
 use libp2p::core::transport::ListenerId;
 use libp2p::{
@@ -93,6 +95,7 @@ pub struct NodeServer {
     events: mpsc::Sender<NodeEvent>,
     discovery: rendezvous::Store,
     status: NodeStatus,
+    ready_listeners: HashSet<ListenerId>,
 }
 
 impl NodeServer {
@@ -110,6 +113,7 @@ impl NodeServer {
         }
         let peer_id = keypair.public().to_peer_id();
         let status = NodeStatus::default();
+        status.expect_listeners(config.listen_addresses.len());
         let behaviour = build_behaviour(&keypair, peer_id, config, status.clone());
         let swarm = SwarmBuilder::with_existing_identity(keypair)
             .with_tokio()
@@ -133,6 +137,7 @@ impl NodeServer {
                 events,
                 discovery: rendezvous::Store::new(config),
                 status,
+                ready_listeners: HashSet::new(),
             },
         ))
     }
@@ -228,6 +233,7 @@ impl NodeServer {
     }
 
     fn expire_discovery(&mut self) {
+        self.status.touch();
         for peer in self.discovery.expire(std::time::Instant::now()) {
             self.emit(NodeEvent::DiscoveryUnregistered { peer });
         }
@@ -236,10 +242,15 @@ impl NodeServer {
     }
 
     fn handle_event(&mut self, event: SwarmEvent<BehaviourEvent>) {
+        self.status.touch();
         let event = match event {
-            SwarmEvent::NewListenAddr { address, .. } => {
+            SwarmEvent::NewListenAddr {
+                listener_id,
+                address,
+            } => {
                 self.swarm.add_external_address(address.clone());
-                self.status.listening();
+                self.ready_listeners.insert(listener_id);
+                self.status.listeners_ready(self.ready_listeners.len());
                 Some(NodeEvent::Listening { address })
             }
             SwarmEvent::ConnectionEstablished { .. } => {
@@ -248,6 +259,11 @@ impl NodeServer {
             }
             SwarmEvent::ConnectionClosed { .. } => {
                 self.status.connection_closed();
+                None
+            }
+            SwarmEvent::ListenerClosed { listener_id, .. } => {
+                self.ready_listeners.remove(&listener_id);
+                self.status.listeners_ready(self.ready_listeners.len());
                 None
             }
             SwarmEvent::Behaviour(BehaviourEvent::Relay(

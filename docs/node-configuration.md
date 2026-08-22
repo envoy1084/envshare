@@ -71,8 +71,10 @@ without allocating unbounded state.
 
 The operations listener accepts loopback addresses only. It serves:
 
-- `GET /healthz`: `200` while the node task is alive;
-- `GET /readyz`: `200` only after a libp2p listener is ready and before drain;
+- `GET /health/live` (alias `/healthz`): `200` while the node task has advanced
+  within five seconds;
+- `GET /health/ready` (alias `/readyz`): `200` only after every configured
+  libp2p listener is ready and before drain;
 - `GET /metrics`: `OpenMetrics` 1.0 counters and gauges with no peer, address,
   namespace, capability, or payload labels.
 

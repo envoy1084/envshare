@@ -1,15 +1,23 @@
 //! Low-cardinality in-process node health and metrics.
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, AtomicU64, Ordering},
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering},
+    },
+    time::{Duration, Instant},
 };
 
-#[derive(Default)]
+const LIVENESS_STALE_AFTER: Duration = Duration::from_secs(5);
+
 struct Inner {
+    started: Instant,
     live: AtomicBool,
     ready: AtomicBool,
     draining: AtomicBool,
+    listeners_expected: AtomicU64,
+    listeners_ready: AtomicU64,
+    last_progress_ms: AtomicU64,
     connections: AtomicU64,
     reservations: AtomicU64,
     discovery_registrations: AtomicU64,
@@ -23,6 +31,31 @@ struct Inner {
     events_dropped: AtomicU64,
 }
 
+impl Default for Inner {
+    fn default() -> Self {
+        Self {
+            started: Instant::now(),
+            live: AtomicBool::new(false),
+            ready: AtomicBool::new(false),
+            draining: AtomicBool::new(false),
+            listeners_expected: AtomicU64::new(0),
+            listeners_ready: AtomicU64::new(0),
+            last_progress_ms: AtomicU64::new(0),
+            connections: AtomicU64::new(0),
+            reservations: AtomicU64::new(0),
+            discovery_registrations: AtomicU64::new(0),
+            reservations_accepted: AtomicU64::new(0),
+            reservations_denied: AtomicU64::new(0),
+            circuits_accepted: AtomicU64::new(0),
+            circuits_denied: AtomicU64::new(0),
+            discovery_requests: AtomicU64::new(0),
+            discovery_rejected: AtomicU64::new(0),
+            admission_rejected: AtomicU64::new(0),
+            events_dropped: AtomicU64::new(0),
+        }
+    }
+}
+
 /// Cloneable, non-secret node health and metric state.
 #[derive(Clone, Default)]
 pub struct NodeStatus {
@@ -32,10 +65,33 @@ pub struct NodeStatus {
 impl NodeStatus {
     pub(crate) fn start(&self) {
         self.inner.live.store(true, Ordering::Relaxed);
+        self.touch();
     }
 
-    pub(crate) fn listening(&self) {
-        self.inner.ready.store(true, Ordering::Relaxed);
+    pub(crate) fn expect_listeners(&self, listeners: usize) {
+        self.inner.listeners_expected.store(
+            u64::try_from(listeners).unwrap_or(u64::MAX),
+            Ordering::Relaxed,
+        );
+    }
+
+    pub(crate) fn listeners_ready(&self, listeners: usize) {
+        let listeners = u64::try_from(listeners).unwrap_or(u64::MAX);
+        self.inner
+            .listeners_ready
+            .store(listeners, Ordering::Relaxed);
+        let expected = self.inner.listeners_expected.load(Ordering::Relaxed);
+        self.inner
+            .ready
+            .store(expected > 0 && listeners >= expected, Ordering::Relaxed);
+    }
+
+    pub(crate) fn touch(&self) {
+        let elapsed = self.inner.started.elapsed().as_millis();
+        self.inner.last_progress_ms.store(
+            u64::try_from(elapsed).unwrap_or(u64::MAX),
+            Ordering::Relaxed,
+        );
     }
 
     pub(crate) fn begin_drain(&self) {
@@ -51,13 +107,26 @@ impl NodeStatus {
     /// Returns whether the node task is alive.
     #[must_use]
     pub fn is_live(&self) -> bool {
-        self.inner.live.load(Ordering::Relaxed)
+        let elapsed = u64::try_from(self.inner.started.elapsed().as_millis()).unwrap_or(u64::MAX);
+        self.is_live_at(elapsed)
     }
 
-    /// Returns whether at least one listener is ready and shutdown has not begun.
+    fn is_live_at(&self, elapsed_ms: u64) -> bool {
+        self.inner.live.load(Ordering::Relaxed)
+            && elapsed_ms.saturating_sub(self.inner.last_progress_ms.load(Ordering::Relaxed))
+                <= u64::try_from(LIVENESS_STALE_AFTER.as_millis()).unwrap_or(u64::MAX)
+    }
+
+    /// Returns whether every configured listener is ready and shutdown has not begun.
     #[must_use]
     pub fn is_ready(&self) -> bool {
         self.inner.ready.load(Ordering::Relaxed) && !self.inner.draining.load(Ordering::Relaxed)
+    }
+
+    /// Returns the number of active transport connections.
+    #[must_use]
+    pub fn active_connections(&self) -> u64 {
+        self.inner.connections.load(Ordering::Relaxed)
     }
 
     pub(crate) fn connection_opened(&self) {
@@ -160,7 +229,7 @@ impl NodeStatus {
             ),
             u8::from(self.is_live()),
             u8::from(self.is_ready()),
-            value(&self.inner.connections),
+            self.active_connections(),
             value(&self.inner.reservations),
             value(&self.inner.discovery_registrations),
             value(&self.inner.reservations_accepted),
@@ -189,4 +258,34 @@ fn decrement(counter: &AtomicU64) {
     let _ = counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
         Some(value.saturating_sub(1))
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn liveness_requires_recent_progress() {
+        let status = NodeStatus::default();
+        status.start();
+
+        assert!(status.is_live_at(5_000));
+        assert!(!status.is_live_at(5_001));
+        status.stop();
+        assert!(!status.is_live_at(0));
+    }
+
+    #[test]
+    fn readiness_requires_every_expected_listener() {
+        let status = NodeStatus::default();
+        status.expect_listeners(2);
+        status.start();
+
+        status.listeners_ready(1);
+        assert!(!status.is_ready());
+        status.listeners_ready(2);
+        assert!(status.is_ready());
+        status.listeners_ready(1);
+        assert!(!status.is_ready());
+    }
 }

@@ -47,6 +47,12 @@ async fn readiness_drops_during_drain_before_liveness() -> Result<(), Box<dyn Er
         }
     })
     .await?;
+    timeout(Duration::from_secs(5), async {
+        while status.active_connections() == 0 {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await?;
 
     node_cancel.cancel();
     timeout(Duration::from_secs(1), async {
