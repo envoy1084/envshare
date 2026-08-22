@@ -144,9 +144,10 @@ tests, documentation, and relevant verification commands pass.
       and relay-only paths on clean supported systems.
 - [x] Verify two simultaneous valid receivers produce exactly one claimant and no
       disclosure state ever returns to available.
-- [ ] Verify no payload, capability, room identifier, environment key/value, path,
+- [x] Verify no payload, capability, room identifier, environment key/value, path,
       or long-lived client identifier appears in logs, metrics, errors, analytics,
-      crash context, or default automation output.
+      crash context, or default automation output outside the documented,
+      intentional sender capability channel.
 - [ ] Verify repository status is clean, documentation matches released behavior,
       all required checks pass, release artifacts install correctly, and no TODO
       above remains incomplete.

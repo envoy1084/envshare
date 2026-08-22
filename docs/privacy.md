@@ -50,7 +50,9 @@ Normal errors, JSON events, logs, metrics, traces, panic formatting, and default
 automation output must not include payload bytes, capabilities, full room IDs,
 environment names or values, sender paths, or raw peer error chains. Node labels
 come from bounded enums rather than peer or address identifiers. See the
-[secret-output policy](secret-output-policy.md).
+[secret-output policy](secret-output-policy.md) and its
+[completed output-surface audit](secret-output-audit.md). The intentional sender
+capability channel is the necessary exception and must be treated as secret.
 
 `envshare doctor --verbose` may show configured public node identities by explicit
 request. Installer downloads disclose the requested version, IP address, and
@@ -64,4 +66,3 @@ backups, and retention. They should minimize access and duration, protect the
 identity key, avoid packet capture except during approved incidents, and publish
 their own privacy notice if offering a public service. Envshare itself has no
 central controller able to answer account-data requests or delete receiver files.
-

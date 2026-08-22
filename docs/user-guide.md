@@ -98,9 +98,11 @@ Prefer a pipe over a command-line capability argument:
 printf '%s\n' "$ENVSHARE_CODE" | envshare receive --code-stdin --output .env.shared
 ```
 
-`--code-only` is the explicit secret-bearing sender mode. `--json` emits bounded,
-non-secret lifecycle records, but it does not make a terminal, workflow runner, or
-child process trusted. Never enable shell command tracing around a capability.
+`--code-only` is the explicit secret-bearing sender mode. With `send --json`,
+stdout contains bounded, non-secret lifecycle records and the capability remains
+on stderr as a separate secret-bearing channel. Redirect and protect both streams
+deliberately; JSON does not make a terminal, workflow runner, or child process
+trusted. Never enable shell command tracing around a capability.
 Stable process statuses and output behavior are listed in the [CLI reference](cli.md).
 
 ## Completion and uncertainty
