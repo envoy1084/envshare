@@ -50,6 +50,23 @@ pub enum NetworkEvent {
         /// Authenticated remote libp2p identity.
         peer: PeerId,
     },
+    /// A relay server accepted or renewed this client's reservation.
+    RelayReservation {
+        /// Relay server identity.
+        relay_peer: PeerId,
+        /// True when an existing reservation was renewed.
+        renewal: bool,
+    },
+    /// A circuit to a remote destination was established through a relay.
+    OutboundRelayCircuit {
+        /// Relay server identity.
+        relay_peer: PeerId,
+    },
+    /// A remote source reached this client through a relay reservation.
+    InboundRelayCircuit {
+        /// Authenticated remote source identity.
+        source_peer: PeerId,
+    },
 }
 
 enum Command {
@@ -201,7 +218,9 @@ impl NetworkDriver {
             )
             .map_err(|_| NetworkError::Configuration)?
             .with_quic()
-            .with_behaviour(|keypair| Behaviour::new(keypair, config))
+            .with_relay_client(libp2p::noise::Config::new, libp2p::yamux::Config::default)
+            .map_err(|_| NetworkError::Configuration)?
+            .with_behaviour(|keypair, relay| Behaviour::new(keypair, config, relay))
             .map_err(|_| NetworkError::Configuration)?
             .with_swarm_config(|swarm_config| {
                 swarm_config
@@ -306,6 +325,9 @@ impl NetworkDriver {
             SwarmEvent::Behaviour(BehaviourEvent::Transfer(event)) => {
                 self.handle_transfer_event(event);
             }
+            SwarmEvent::Behaviour(BehaviourEvent::Relay(event)) => {
+                self.handle_relay_event(&event);
+            }
             SwarmEvent::NewListenAddr { address, .. } => {
                 let _ = self.events.try_send(NetworkEvent::Listening { address });
             }
@@ -349,6 +371,30 @@ impl NetworkDriver {
             request_response::Event::InboundFailure { .. }
             | request_response::Event::ResponseSent { .. } => {}
         }
+    }
+
+    fn handle_relay_event(&mut self, event: &libp2p::relay::client::Event) {
+        let event = match event {
+            libp2p::relay::client::Event::ReservationReqAccepted {
+                relay_peer_id,
+                renewal,
+                ..
+            } => NetworkEvent::RelayReservation {
+                relay_peer: *relay_peer_id,
+                renewal: *renewal,
+            },
+            libp2p::relay::client::Event::OutboundCircuitEstablished { relay_peer_id, .. } => {
+                NetworkEvent::OutboundRelayCircuit {
+                    relay_peer: *relay_peer_id,
+                }
+            }
+            libp2p::relay::client::Event::InboundCircuitEstablished { src_peer_id, .. } => {
+                NetworkEvent::InboundRelayCircuit {
+                    source_peer: *src_peer_id,
+                }
+            }
+        };
+        let _ = self.events.try_send(event);
     }
 
     fn handle_inbound_request(

@@ -120,7 +120,10 @@ async fn wait_for_listener(
             NetworkEvent::Listening { address } => return Ok(address),
             NetworkEvent::InboundRequest { .. }
             | NetworkEvent::Connected { .. }
-            | NetworkEvent::Disconnected { .. } => {}
+            | NetworkEvent::Disconnected { .. }
+            | NetworkEvent::RelayReservation { .. }
+            | NetworkEvent::OutboundRelayCircuit { .. }
+            | NetworkEvent::InboundRelayCircuit { .. } => {}
         }
     }
 }

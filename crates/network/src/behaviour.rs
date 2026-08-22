@@ -3,13 +3,15 @@
 use std::time::Duration;
 
 use libp2p::swarm::NetworkBehaviour;
-use libp2p::{identify, memory_connection_limits, ping, request_response};
+use libp2p::{dcutr, identify, memory_connection_limits, ping, relay, request_response};
 
 use crate::{NetworkConfig, codec::TransferCodec, codec::transfer_protocol};
 
 #[derive(NetworkBehaviour)]
 pub(crate) struct Behaviour {
     pub(crate) transfer: request_response::Behaviour<TransferCodec>,
+    relay: relay::client::Behaviour,
+    dcutr: dcutr::Behaviour,
     identify: identify::Behaviour,
     ping: ping::Behaviour,
     connection_limits: libp2p::connection_limits::Behaviour,
@@ -17,7 +19,11 @@ pub(crate) struct Behaviour {
 }
 
 impl Behaviour {
-    pub(crate) fn new(keypair: &libp2p::identity::Keypair, config: &NetworkConfig) -> Self {
+    pub(crate) fn new(
+        keypair: &libp2p::identity::Keypair,
+        config: &NetworkConfig,
+        relay: relay::client::Behaviour,
+    ) -> Self {
         let transfer_config = request_response::Config::default()
             .with_request_timeout(config.request_timeout)
             .with_max_concurrent_streams(config.max_concurrent_streams);
@@ -36,6 +42,8 @@ impl Behaviour {
             .with_max_established_per_peer(Some(config.max_connections_per_peer));
         Self {
             transfer,
+            relay,
+            dcutr: dcutr::Behaviour::new(keypair.public().to_peer_id()),
             identify: identify::Behaviour::new(identify_config),
             ping: ping::Behaviour::default(),
             connection_limits: libp2p::connection_limits::Behaviour::new(limits),

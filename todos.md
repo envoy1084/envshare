@@ -64,13 +64,13 @@ tests, documentation, and relevant verification commands pass.
 
 ## Phase 3 — Relay connectivity
 
-- [ ] Implement stable Ed25519 node identity generation, inspection, secure
+- [x] Implement stable Ed25519 node identity generation, inspection, secure
       persistence, configuration validation, and explicit startup failure.
-- [ ] Implement the Circuit Relay v2 server with bounded reservations, circuits,
+- [x] Implement the Circuit Relay v2 server with bounded reservations, circuits,
       durations, bytes, per-peer limits, and rate limiting.
-- [ ] Implement client relay reservation, renewal, circuit listener addresses,
+- [x] Implement client relay reservation, renewal, circuit listener addresses,
       relay dialing, route racing, and opportunistic DCUtR upgrades.
-- [ ] Implement node connection/memory limits and safe structured events.
+- [x] Implement node connection/memory limits and safe structured events.
 - [ ] Add relay-only integration, renewal, saturation, byte-limit, duration-limit,
       restart, and direct-transport-blocked tests.
 
