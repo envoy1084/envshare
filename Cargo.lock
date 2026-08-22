@@ -573,6 +573,7 @@ dependencies = [
  "getrandom 0.4.3",
  "network",
  "nix 0.31.3",
+ "process-wrap",
  "protocol",
  "tempfile",
  "thiserror 2.0.20",
@@ -2654,6 +2655,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "process-wrap"
+version = "9.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e842efad9119158434d193c6682e2ebee4b44d6ad801d7b349623b3f57cdf55"
+dependencies = [
+ "futures",
+ "indexmap",
+ "nix 0.31.3",
+ "tokio",
+ "windows 0.62.2",
 ]
 
 [[package]]

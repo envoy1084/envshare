@@ -42,6 +42,7 @@ humantime = "2.4.0"
 network = { version = "=0.1.0-alpha.1", path = "crates/network" }
 nix = { version = "0.31.3", features = ["process", "signal"] }
 protocol = { version = "=0.1.0-alpha.1", path = "crates/protocol" }
+process-wrap = { version = "9.1.0", default-features = false, features = ["job-object", "kill-on-drop", "process-group", "tokio1"] }
 rpassword = "7.5.4"
 libp2p = { version = "0.56.0", default-features = false, features = [
     "dcutr",

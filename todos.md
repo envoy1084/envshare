@@ -95,7 +95,7 @@ tests, documentation, and relevant verification commands pass.
       `doctor` without user-derived identifiers.
 - [x] Complete TTY detection, `NO_COLOR`, code-only mode, JSON streaming, safe
       debug behavior, exact delivery wording, and stable error/exit contracts.
-- [ ] Complete Unix and Windows process-group behavior and receiver filesystem
+- [x] Complete Unix and Windows process-group behavior and receiver filesystem
       safety on every supported target.
 - [x] Add shell completions and man pages.
 - [ ] Add end-to-end CLI suites covering success, races, interruption, missing

@@ -1,10 +1,13 @@
 //! Direct child process construction without a shell.
 
-use std::{collections::BTreeMap, ffi::OsString};
+use std::{collections::BTreeMap, ffi::OsString, process::ExitStatus};
 
-use std::process::ExitStatus;
-
-use tokio::process::{Child, Command};
+#[cfg(windows)]
+use process_wrap::tokio::JobObject;
+#[cfg(unix)]
+use process_wrap::tokio::ProcessGroup;
+use process_wrap::tokio::{ChildWrapper, CommandWrap, KillOnDrop};
+use tokio::process::Command;
 
 use crate::CoreError;
 
@@ -20,6 +23,9 @@ pub enum EnvironmentMode {
     Clean,
 }
 
+/// A child contained in an operating-system process group or job object.
+pub type ManagedChild = Box<dyn ChildWrapper>;
+
 /// Spawns a program directly with a bounded parsed environment.
 ///
 /// No shell is involved. On Unix the child starts in its own process group, and
@@ -34,12 +40,12 @@ pub fn spawn_child(
     arguments: &[OsString],
     environment: &ParsedEnvironment,
     mode: EnvironmentMode,
-) -> Result<Child, CoreError> {
+) -> Result<ManagedChild, CoreError> {
     if program.is_empty() {
         return Err(CoreError::Configuration);
     }
     let mut command = Command::new(program);
-    command.args(arguments).kill_on_drop(true);
+    command.args(arguments);
     match mode {
         EnvironmentMode::Overlay => {
             let inherited: BTreeMap<OsString, OsString> = std::env::vars_os().collect();
@@ -56,6 +62,8 @@ pub fn spawn_child(
             command.env_clear().envs(environment.variables());
         }
     }
+    let mut command = CommandWrap::from(command);
+    command.wrap(KillOnDrop);
     configure_process_group(&mut command);
     command.spawn().map_err(|_| CoreError::ChildProcess)
 }
@@ -65,7 +73,9 @@ pub fn spawn_child(
 /// # Errors
 ///
 /// Returns a safe process error when waiting or termination fails.
-pub async fn wait_child_forwarding_interrupt(mut child: Child) -> Result<ExitStatus, CoreError> {
+pub async fn wait_child_forwarding_interrupt(
+    mut child: ManagedChild,
+) -> Result<ExitStatus, CoreError> {
     tokio::select! {
         status = child.wait() => status.map_err(|_| CoreError::ChildProcess),
         interrupt = tokio::signal::ctrl_c() => {
@@ -77,28 +87,83 @@ pub async fn wait_child_forwarding_interrupt(mut child: Child) -> Result<ExitSta
 }
 
 #[cfg(unix)]
-fn configure_process_group(command: &mut Command) {
-    command.process_group(0);
+fn configure_process_group(command: &mut CommandWrap) {
+    command.wrap(ProcessGroup::leader());
 }
 
 #[cfg(windows)]
-fn configure_process_group(_command: &mut Command) {}
+fn configure_process_group(command: &mut CommandWrap) {
+    command.wrap(JobObject);
+}
 
 #[cfg(unix)]
-fn interrupt_child(child: &mut Child) -> Result<(), CoreError> {
-    use nix::{
-        sys::signal::{Signal, killpg},
-        unistd::Pid,
-    };
+fn interrupt_child(child: &mut ManagedChild) -> Result<(), CoreError> {
+    use nix::sys::signal::Signal;
 
-    let process_id = child.id().ok_or(CoreError::ChildProcess)?;
-    let process_id = i32::try_from(process_id).map_err(|_| CoreError::ChildProcess)?;
-    killpg(Pid::from_raw(process_id), Signal::SIGINT).map_err(|_| CoreError::ChildProcess)
+    child
+        .signal(Signal::SIGINT as i32)
+        .map_err(|_| CoreError::ChildProcess)
 }
 
 #[cfg(windows)]
-fn interrupt_child(child: &mut Child) -> Result<(), CoreError> {
+fn interrupt_child(child: &mut ManagedChild) -> Result<(), CoreError> {
     child.start_kill().map_err(|_| CoreError::ChildProcess)
 }
 
 use super::ParsedEnvironment;
+
+#[cfg(all(test, unix))]
+mod tests {
+    use std::{error::Error, path::Path, time::Duration};
+
+    use nix::{errno::Errno, sys::signal::kill, unistd::Pid};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn killing_a_managed_child_terminates_its_process_group() -> Result<(), Box<dyn Error>> {
+        let directory = tempfile::tempdir()?;
+        let pid_path = directory.path().join("grandchild.pid");
+        let environment = ParsedEnvironment::parse(b"")?;
+        let arguments = vec![
+            OsString::from("-c"),
+            OsString::from("sleep 30 & echo $! > \"$1\"; wait"),
+            OsString::from("envshare-process-test"),
+            pid_path.as_os_str().to_owned(),
+        ];
+        let mut child = spawn_child(
+            OsString::from("/bin/sh"),
+            &arguments,
+            &environment,
+            EnvironmentMode::Overlay,
+        )?;
+        let grandchild = wait_for_pid(&pid_path).await?;
+
+        child.start_kill()?;
+        tokio::time::timeout(Duration::from_secs(5), child.wait()).await??;
+
+        assert!(matches!(
+            kill(Pid::from_raw(grandchild), None),
+            Err(Errno::ESRCH)
+        ));
+        Ok(())
+    }
+
+    async fn wait_for_pid(path: &Path) -> Result<i32, Box<dyn Error>> {
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                match std::fs::read_to_string(path) {
+                    Ok(text) if !text.trim().is_empty() => {
+                        return text.trim().parse::<i32>().map_err(Into::into);
+                    }
+                    Ok(_) => tokio::time::sleep(Duration::from_millis(10)).await,
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                    }
+                    Err(error) => return Err(error.into()),
+                }
+            }
+        })
+        .await?
+    }
+}
