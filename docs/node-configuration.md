@@ -51,6 +51,12 @@ discovery_register_requests_per_minute = 12
 discovery_discover_requests_per_minute = 30
 discovery_rate_limit_peers = 1024
 discovery_allow_private_addresses = false
+
+[telemetry]
+log_format = "json"
+log_filter = "info,libp2p=warn"
+otlp_endpoint = ""
+otlp_sample_ratio = 0.01
 ```
 
 Absolute ceilings cap listeners, connections, reservations, circuits, circuit
@@ -84,3 +90,28 @@ libp2p listeners close immediately. Existing peer connections continue until
 they disconnect or `shutdown_grace_period` expires; the operations endpoint
 stays live during that interval and then shuts down without detached request
 tasks.
+
+## Logs and optional tracing
+
+`log_format` accepts `text` or newline-delimited `json`; `--json` overrides it
+for both local logs and the operational event stream. Structured events contain
+stable event names but never peer IDs, multiaddresses, discovery namespaces,
+capabilities, error chains, or arbitrary request data. The public node Peer ID
+is printed only in interactive text mode and can always be obtained separately
+with `envshare-node key inspect`.
+
+OTLP tracing is compiled out by default. Build the node with
+`cargo build -p node --release --features otlp` and set `otlp_endpoint` to an
+explicit HTTP(S) OpenTelemetry Collector base URL to opt in. An absent or empty
+endpoint disables export. URL credentials, query strings, and fragments are
+rejected so credentials cannot be embedded accidentally; configure collector
+authentication outside this file. The configured destination is the only trace
+destination.
+
+Trace IDs come from the SDK's random ID generator and are unrelated to discovery
+namespaces. Spans carry no peer IDs or addresses. The sample ratio defaults to
+one percent and cannot exceed ten percent; queues, batches, span attributes,
+events, links, and export time are bounded. Export occurs on an independent
+batch worker, and collector failures do not change health or readiness. A binary
+built without `otlp` rejects a non-empty endpoint instead of silently ignoring
+it.

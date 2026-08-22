@@ -41,6 +41,9 @@ hmac = { version = "0.13.0", features = ["zeroize"] }
 humantime = "2.4.0"
 network = { version = "=0.1.0-alpha.1", path = "crates/network" }
 nix = { version = "0.31.3", features = ["process", "signal"] }
+opentelemetry = { version = "0.32.0", default-features = false, features = ["trace"] }
+opentelemetry-otlp = { version = "0.32.0", default-features = false, features = ["http-proto", "reqwest-blocking-client", "reqwest-rustls-webpki-roots", "trace"] }
+opentelemetry_sdk = { version = "0.32.1", default-features = false, features = ["trace"] }
 protocol = { version = "=0.1.0-alpha.1", path = "crates/protocol" }
 process-wrap = { version = "9.1.0", default-features = false, features = ["job-object", "kill-on-drop", "process-group", "tokio1"] }
 prost = "0.14.4"
@@ -73,6 +76,7 @@ tokio = { version = "1.53.0", features = ["io-util", "macros", "net", "process",
 tokio-util = { version = "0.7.18", features = ["rt"] }
 toml = "0.9.11"
 tracing = "0.1.44"
+tracing-opentelemetry = { version = "0.33.0", default-features = false }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt", "json"] }
 zeroize = { version = "1.9.0", features = ["derive"] }
 windows-permissions = "0.2.4"

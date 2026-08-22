@@ -10,7 +10,7 @@ mod relay;
 mod rendezvous;
 mod telemetry;
 
-pub use config::NodeConfig;
+pub use config::{LogFormat, NodeConfig, TelemetryConfig};
 pub use identity::{generate_identity, load_identity, save_identity};
 pub use operations::OperationsServer;
 pub use relay::{NodeEvent, NodeServer};

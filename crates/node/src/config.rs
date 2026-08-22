@@ -80,6 +80,44 @@ pub struct NodeConfig {
     pub discovery_rate_limit_peers: usize,
     /// Admit private, loopback, and link-local registrations for private nodes.
     pub discovery_allow_private_addresses: bool,
+    /// Safe local logging and optional trace export configuration.
+    pub telemetry: TelemetryConfig,
+}
+
+/// Node logging and trace-export settings.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct TelemetryConfig {
+    /// Local log encoding.
+    pub log_format: LogFormat,
+    /// Static tracing filter directive.
+    pub log_filter: String,
+    /// OTLP/HTTP collector base URL; disabled when absent.
+    pub otlp_endpoint: Option<String>,
+    /// Fraction of root traces exported when OTLP is enabled.
+    pub otlp_sample_ratio: f64,
+}
+
+/// Supported local log encodings.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum LogFormat {
+    /// Compact text logs for interactive operation.
+    #[default]
+    Text,
+    /// Newline-delimited structured JSON logs.
+    Json,
+}
+
+impl Default for TelemetryConfig {
+    fn default() -> Self {
+        Self {
+            log_format: LogFormat::Text,
+            log_filter: "info,libp2p=warn".to_owned(),
+            otlp_endpoint: None,
+            otlp_sample_ratio: 0.01,
+        }
+    }
 }
 
 impl Default for NodeConfig {
@@ -122,6 +160,7 @@ impl Default for NodeConfig {
             discovery_discover_requests_per_minute: 30,
             discovery_rate_limit_peers: 1_024,
             discovery_allow_private_addresses: false,
+            telemetry: TelemetryConfig::default(),
         }
     }
 }
@@ -214,7 +253,34 @@ impl NodeConfig {
             && self.discovery_discover_requests_per_minute <= 240
             && self.discovery_rate_limit_peers > 0
             && self.discovery_rate_limit_peers <= 4_096
+            && validate_telemetry(&self.telemetry)
     }
+}
+
+fn validate_telemetry(config: &TelemetryConfig) -> bool {
+    let valid_filter = !config.log_filter.is_empty()
+        && config.log_filter.len() <= 256
+        && !config.log_filter.chars().any(char::is_control)
+        && tracing_subscriber::EnvFilter::try_new(&config.log_filter).is_ok();
+    let valid_endpoint = config.otlp_endpoint.as_deref().is_none_or(|endpoint| {
+        if endpoint.is_empty() {
+            return true;
+        }
+        let authority = endpoint
+            .strip_prefix("https://")
+            .or_else(|| endpoint.strip_prefix("http://"))
+            .and_then(|rest| rest.split('/').next());
+        endpoint.len() <= 2_048
+            && authority.is_some_and(|value| !value.is_empty())
+            && !endpoint.chars().any(char::is_whitespace)
+            && !endpoint
+                .chars()
+                .any(|value| matches!(value, '@' | '?' | '#'))
+    });
+    valid_filter
+        && valid_endpoint
+        && config.otlp_sample_ratio.is_finite()
+        && (0.0..=0.1).contains(&config.otlp_sample_ratio)
 }
 
 fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
@@ -262,6 +328,24 @@ shutdown_grace_period = "5s"
     fn absolute_safety_ceilings_cannot_be_disabled() {
         let config = NodeConfig {
             max_connections: 8_193,
+            ..NodeConfig::default()
+        };
+        assert!(!config.validate());
+
+        let config = NodeConfig {
+            telemetry: TelemetryConfig {
+                log_filter: "info[".to_owned(),
+                ..TelemetryConfig::default()
+            },
+            ..NodeConfig::default()
+        };
+        assert!(!config.validate());
+
+        let config = NodeConfig {
+            telemetry: TelemetryConfig {
+                otlp_endpoint: Some("https://token@example.com".to_owned()),
+                ..TelemetryConfig::default()
+            },
             ..NodeConfig::default()
         };
         assert!(!config.validate());

@@ -107,7 +107,7 @@ tests, documentation, and relevant verification commands pass.
 - [x] Implement bounded per-IP/per-peer admission control and overload shedding.
 - [x] Implement loopback health, readiness, graceful drain, and OpenMetrics
       endpoints with low-cardinality labels.
-- [ ] Add safe JSON logs and optional OTLP tracing behind a feature flag.
+- [x] Add safe JSON logs and optional OTLP tracing behind a feature flag.
 - [ ] Add Dockerfile, Compose, native systemd service, sample configuration,
       firewall guidance, hardening, resource limits, and health checks.
 - [ ] Add Prometheus alerts, a Grafana dashboard, backup/restore, rolling upgrade,

@@ -5,11 +5,15 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
+use logging::TelemetryGuard;
 use node::{
-    NodeConfig, NodeError, NodeEvent, NodeServer, OperationsServer, generate_identity,
+    LogFormat, NodeConfig, NodeError, NodeEvent, NodeServer, OperationsServer, generate_identity,
     load_identity, save_identity,
 };
 use tokio_util::sync::CancellationToken;
+use tracing::Instrument as _;
+
+mod logging;
 
 #[derive(Debug, Parser)]
 #[command(name = "envshare-node", version, about)]
@@ -110,6 +114,18 @@ async fn run_server(arguments: ServeArgs) -> Result<(), NodeError> {
             .map(|address| address.parse().map_err(|_| NodeError::Configuration))
             .collect::<Result<Vec<_>, _>>()?;
     }
+    let json = arguments.json || config.telemetry.log_format == LogFormat::Json;
+    let _telemetry = TelemetryGuard::initialize(&config.telemetry, arguments.json)?;
+    run_server_config(arguments, config, json)
+        .instrument(tracing::info_span!("node_service"))
+        .await
+}
+
+async fn run_server_config(
+    arguments: ServeArgs,
+    config: NodeConfig,
+    json: bool,
+) -> Result<(), NodeError> {
     let (peer_id, mut events, server) =
         NodeServer::new(load_identity(&arguments.identity)?, &config)?;
     let status = server.status();
@@ -128,11 +144,9 @@ async fn run_server(arguments: ServeArgs) -> Result<(), NodeError> {
             Ok(())
         }
     });
-    if arguments.json {
-        println!(
-            "{}",
-            serde_json::json!({ "event": "starting", "peer_id": peer_id.to_string() })
-        );
+    tracing::info!(event = "node_starting");
+    if json {
+        println!("{}", event_json("starting"));
     } else {
         println!("Node peer: {peer_id}");
     }
@@ -163,7 +177,7 @@ async fn run_server(arguments: ServeArgs) -> Result<(), NodeError> {
             }
             event = events.recv() => {
                 let Some(event) = event else { continue };
-                print_event(arguments.json, event);
+                print_event(json, event);
             }
         }
     };
@@ -187,22 +201,73 @@ fn flatten_operations_task(
 }
 
 fn print_event(json: bool, event: NodeEvent) {
+    let event_name = event_name(&event);
+    tracing::info!(event = event_name);
     if json {
-        let event_name = match event {
-            NodeEvent::Listening { .. } => "listening",
-            NodeEvent::ReservationAccepted { renewed: false, .. } => "reservation_accepted",
-            NodeEvent::ReservationAccepted { renewed: true, .. } => "reservation_renewed",
-            NodeEvent::CircuitAccepted { .. } => "circuit_accepted",
-            NodeEvent::ReservationClosed { .. } => "reservation_closed",
-            NodeEvent::ReservationDenied { .. } => "reservation_denied",
-            NodeEvent::CircuitDenied { .. } => "circuit_denied",
-            NodeEvent::DiscoveryRegistered { .. } => "discovery_registered",
-            NodeEvent::DiscoveryUnregistered { .. } => "discovery_unregistered",
-            NodeEvent::DiscoveryServed { .. } => "discovery_served",
-            NodeEvent::DiscoveryRejected { .. } => "discovery_rejected",
-        };
-        println!("{}", serde_json::json!({ "event": event_name }));
+        println!("{}", event_json(event_name));
     } else if let NodeEvent::Listening { address } = event {
         println!("Listening: {address}");
+    }
+}
+
+fn event_name(event: &NodeEvent) -> &'static str {
+    match event {
+        NodeEvent::Listening { .. } => "listening",
+        NodeEvent::ReservationAccepted { renewed: false, .. } => "reservation_accepted",
+        NodeEvent::ReservationAccepted { renewed: true, .. } => "reservation_renewed",
+        NodeEvent::CircuitAccepted { .. } => "circuit_accepted",
+        NodeEvent::ReservationClosed { .. } => "reservation_closed",
+        NodeEvent::ReservationDenied { .. } => "reservation_denied",
+        NodeEvent::CircuitDenied { .. } => "circuit_denied",
+        NodeEvent::DiscoveryRegistered { .. } => "discovery_registered",
+        NodeEvent::DiscoveryUnregistered { .. } => "discovery_unregistered",
+        NodeEvent::DiscoveryServed { .. } => "discovery_served",
+        NodeEvent::DiscoveryRejected { .. } => "discovery_rejected",
+    }
+}
+
+fn event_json(event: &'static str) -> serde_json::Value {
+    serde_json::json!({ "event": event })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn json_events_do_not_serialize_identifiers_or_addresses()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let peer = libp2p::identity::Keypair::generate_ed25519()
+            .public()
+            .to_peer_id();
+        let address: libp2p::Multiaddr = "/dns4/private.example/tcp/4001".parse()?;
+        let events = [
+            NodeEvent::Listening { address },
+            NodeEvent::ReservationAccepted {
+                peer,
+                renewed: false,
+            },
+            NodeEvent::CircuitAccepted {
+                source: peer,
+                destination: peer,
+            },
+            NodeEvent::DiscoveryServed {
+                peer,
+                result_count: 42,
+            },
+        ];
+
+        for event in events {
+            let encoded = event_json(event_name(&event)).to_string();
+            assert_eq!(encoded.matches(':').count(), 1);
+            assert!(!encoded.contains(&peer.to_string()));
+            assert!(!encoded.contains("private.example"));
+            assert!(!encoded.contains("42"));
+        }
+        assert_eq!(
+            event_json("starting"),
+            serde_json::json!({ "event": "starting" })
+        );
+        Ok(())
     }
 }
