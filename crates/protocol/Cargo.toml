@@ -12,5 +12,12 @@ keywords.workspace = true
 categories.workspace = true
 publish = false
 
+[dependencies]
+minicbor.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
 [lints]
 workspace = true

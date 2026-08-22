@@ -32,7 +32,7 @@ tests, documentation, and relevant verification commands pass.
       network, room, version, peer identities, nonces, claim, and ciphertext.
 - [x] Implement XChaCha20-Poly1305 envelope encryption/decryption and digest
       verification with secret-safe errors.
-- [ ] Implement bounded CBOR Open, Offer, Acknowledge, Completed, and protocol
+- [x] Implement bounded CBOR Open, Offer, Acknowledge, Completed, and protocol
       error messages with four-byte framing and rejection before allocation.
 - [ ] Implement the fail-closed sender actor, exact-offer retry cache, idempotent
       acknowledgement, expiration, and delivery-unknown transitions.

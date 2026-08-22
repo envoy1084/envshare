@@ -2,11 +2,23 @@
 
 #![forbid(unsafe_code)]
 
+mod envelope;
 mod error;
+mod frame;
 mod limits;
+mod message;
 
-pub use error::ProtocolErrorCode;
+pub use envelope::{ContentType, EnvelopeError, SecretEnvelope, SuggestedName};
+pub use error::{ProtocolErrorCode, WireError};
+pub use frame::{
+    decode_request_frame, decode_response_frame, encode_request_frame, encode_response_frame,
+    parse_frame_length,
+};
 pub use limits::*;
+pub use message::{
+    AcknowledgeRequest, CompletedResponse, OfferResponse, OpenRequest, ProtocolErrorResponse,
+    TransferRequest, TransferResponse,
+};
 
 /// Current application protocol version.
 pub const PROTOCOL_VERSION: u16 = 1;

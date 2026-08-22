@@ -7,6 +7,15 @@ proof = bytes .size 32
 digest = bytes .size 32
 aead-nonce = bytes .size 24
 
+transfer-request =
+  [0, open-request] /
+  [1, acknowledge-request]
+
+transfer-response =
+  [0, offer-response] /
+  [1, completed-response] /
+  [2, protocol-error]
+
 open-request = {
   0: protocol-version,
   1: room-id,

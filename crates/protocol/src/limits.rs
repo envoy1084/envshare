@@ -14,6 +14,10 @@ pub const MAX_ERROR_BODY_BYTES: usize = 1024;
 pub const MAX_OFFER_OVERHEAD_BYTES: usize = 16 * 1024;
 /// Maximum encoded Offer response body.
 pub const MAX_OFFER_BODY_BYTES: usize = MAX_PAYLOAD_BYTES + MAX_OFFER_OVERHEAD_BYTES;
+/// Maximum encoded plaintext envelope before AEAD encryption.
+pub const MAX_ENVELOPE_BYTES: usize = MAX_PAYLOAD_BYTES + 1024;
+/// Maximum encrypted envelope including the Poly1305 tag.
+pub const MAX_CIPHERTEXT_BYTES: usize = MAX_ENVELOPE_BYTES + 16;
 /// Maximum canonical authentication transcript.
 pub const MAX_TRANSCRIPT_BYTES: usize = 8 * 1024;
 /// Maximum configured network identifier length.

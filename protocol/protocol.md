@@ -18,6 +18,12 @@ exactly that many CBOR bytes. A decoder validates a message-specific limit befor
 allocation, rejects zero length, reads exactly the body, limits CBOR nesting and
 collection lengths, and rejects trailing bytes.
 
+The CBOR body is a two-element array containing a numeric message discriminator
+and the corresponding numeric-key map. Request discriminators are `0` for Open
+and `1` for Acknowledge. Response discriminators are `0` for Offer, `1` for
+Completed, and `2` for a protocol error. Definite-length arrays, maps, strings,
+and byte strings are required; fields occur in numeric-key order.
+
 ## Root derivation
 
 Let `secret` be the 20 capability bytes and `network_id` a public stable network
