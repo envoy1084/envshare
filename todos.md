@@ -45,9 +45,9 @@ tests, documentation, and relevant verification commands pass.
 
 ## Phase 2 — Direct transfer and safe local workflows
 
-- [ ] Implement the Tokio-owned libp2p Swarm with QUIC, TCP, Noise, Yamux,
+- [x] Implement the Tokio-owned libp2p Swarm with QUIC, TCP, Noise, Yamux,
       Identify, Ping, connection limits, and the custom request-response codec.
-- [ ] Implement a bounded command/event API around the single-owner network loop,
+- [x] Implement a bounded command/event API around the single-owner network loop,
       cancellation, timeouts, backpressure, and graceful shutdown.
 - [ ] Implement direct sender and receiver flows using explicit multiaddresses.
 - [ ] Implement bounded input reading, raw dotenv preservation, selected-key

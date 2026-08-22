@@ -13,9 +13,16 @@ categories.workspace = true
 publish = false
 
 [dependencies]
+async-trait.workspace = true
+futures.workspace = true
 libp2p.workspace = true
+protocol.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
+
+[dev-dependencies]
+protocol.workspace = true
 
 [lints]
 workspace = true

@@ -2238,7 +2238,11 @@ dependencies = [
 name = "network"
 version = "0.1.0-alpha.1"
 dependencies = [
+ "async-trait",
+ "futures",
  "libp2p",
+ "protocol",
+ "thiserror 2.0.20",
  "tokio",
  "tokio-util",
 ]
