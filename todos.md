@@ -6,9 +6,9 @@ tests, documentation, and relevant verification commands pass.
 
 ## Phase 0 — Repository and specification foundation
 
-- [ ] Create the Rust 2024 workspace, pin the toolchain, centralize dependencies,
+- [x] Create the Rust 2024 workspace, pin the toolchain, centralize dependencies,
       enable workspace lints, and commit `Cargo.lock`.
-- [ ] Add initial crates with enforced dependency direction:
+- [x] Add initial crates with enforced dependency direction:
       `envshare-code`, `envshare-crypto`, `envshare-protocol`, `envshare-core`,
       `envshare-network`, `envshare-cli`, `envshare-node`, and
       `envshare-testkit`.

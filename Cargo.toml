@@ -1,0 +1,76 @@
+[workspace]
+members = [
+    "crates/envshare-cli",
+    "crates/envshare-code",
+    "crates/envshare-core",
+    "crates/envshare-crypto",
+    "crates/envshare-network",
+    "crates/envshare-node",
+    "crates/envshare-protocol",
+    "crates/envshare-testkit",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.96"
+authors = ["Envshare contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/envshare/envshare"
+homepage = "https://github.com/envshare/envshare"
+keywords = ["dotenv", "libp2p", "p2p", "secrets"]
+categories = ["command-line-utilities", "network-programming"]
+
+[workspace.dependencies]
+anyhow = "1.0.102"
+clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
+libp2p = { version = "0.56.0", default-features = false, features = [
+    "dcutr",
+    "dns",
+    "ed25519",
+    "identify",
+    "macros",
+    "memory-connection-limits",
+    "noise",
+    "ping",
+    "quic",
+    "relay",
+    "rendezvous",
+    "request-response",
+    "tcp",
+    "tokio",
+    "yamux",
+] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+thiserror = "2.0.18"
+tokio = { version = "1.53.0", features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-util = { version = "0.7.18", features = ["rt"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt", "json"] }
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+expect_used = "warn"
+panic = "warn"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "warn"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "symbols"
+
+[profile.dist]
+inherits = "release"
+lto = "fat"
+

@@ -1,0 +1,24 @@
+[package]
+name = "envshare-core"
+description = "Sender, receiver, and lifecycle services for Envshare"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+envshare-code = { path = "../envshare-code" }
+envshare-crypto = { path = "../envshare-crypto" }
+envshare-network = { path = "../envshare-network" }
+envshare-protocol = { path = "../envshare-protocol" }
+thiserror.workspace = true
+
+[lints]
+workspace = true
+
