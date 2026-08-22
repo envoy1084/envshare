@@ -74,6 +74,8 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 - [Threat model](docs/threat-model.md)
 - [Secret output policy](docs/secret-output-policy.md)
 - [Node identity operations](docs/node-identity.md)
+- [Command-line interface](docs/cli.md)
+- [Client configuration](docs/configuration.md)
 - [Protocol specification](protocol/protocol.md)
 - [Capability code format](protocol/code-format.md)
 - [Wire schema](protocol/messages.cddl)

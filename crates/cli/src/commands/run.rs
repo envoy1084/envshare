@@ -23,14 +23,21 @@ pub(crate) async fn execute(mut arguments: RunArgs) -> Result<i32, CliFailure> {
         ));
     }
     let environment = ParsedEnvironment::parse(pending.envelope().payload())?;
-    let mode = if arguments.clean_env {
+    if arguments.environment.strict && environment.conflicts_with_inherited() {
+        return Err(CliFailure::new(
+            ExitCode::Configuration,
+            "received environment conflicts with inherited variables",
+        ));
+    }
+    let mode = if arguments.environment.clean_env {
         EnvironmentMode::Clean
-    } else if arguments.r#override {
+    } else if arguments.environment.r#override {
         EnvironmentMode::Override
     } else {
         EnvironmentMode::Overlay
     };
     let child = spawn_child(program.clone(), child_arguments, &environment, mode)?;
+    emit_event(arguments.json, "child_started", None);
     let received = pending.acknowledge().await;
     if received.is_err() {
         return Err(CliFailure::new(
@@ -40,7 +47,18 @@ pub(crate) async fn execute(mut arguments: RunArgs) -> Result<i32, CliFailure> {
     }
     let status = wait_child_forwarding_interrupt(child).await?;
     network.stop().await?;
-    Ok(exit_status(status))
+    let status = exit_status(status);
+    emit_event(arguments.json, "child_exited", Some(status));
+    Ok(status)
+}
+
+fn emit_event(json: bool, event: &'static str, status: Option<i32>) {
+    if json {
+        println!(
+            "{}",
+            serde_json::json!({ "event": event, "status": status })
+        );
+    }
 }
 
 fn exit_status(status: std::process::ExitStatus) -> i32 {

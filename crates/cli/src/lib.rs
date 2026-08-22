@@ -4,6 +4,7 @@
 
 mod args;
 mod commands;
+mod config;
 mod failure;
 
 pub use args::Cli;
@@ -53,7 +54,22 @@ impl ExitCode {
 ///
 /// Returns a secret-safe CLI failure with a stable exit classification.
 pub async fn run(cli: Cli) -> Result<i32, CliFailure> {
+    initialize_output(&cli)?;
     commands::run(cli).await
+}
+
+fn initialize_output(cli: &Cli) -> Result<(), CliFailure> {
+    use std::io::IsTerminal as _;
+
+    let ansi =
+        !cli.no_color && std::env::var_os("NO_COLOR").is_none() && std::io::stderr().is_terminal();
+    let filter = tracing_subscriber::EnvFilter::try_new(cli.log.as_deref().unwrap_or("off"))
+        .map_err(|_| CliFailure::new(ExitCode::Configuration, "log filter is invalid"))?;
+    let _ = tracing_subscriber::fmt()
+        .with_ansi(ansi)
+        .with_env_filter(filter)
+        .try_init();
+    Ok(())
 }
 
 #[cfg(test)]

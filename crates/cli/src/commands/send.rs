@@ -19,16 +19,20 @@ use crate::{CliFailure, ExitCode, args::SendArgs};
 use super::shared::read_sender_input;
 
 pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
-    if arguments.expires.is_zero() {
+    let expires = arguments.expires.ok_or_else(invalid_resolved_config)?;
+    let network = arguments
+        .network
+        .as_deref()
+        .ok_or_else(invalid_resolved_config)?;
+    if expires.is_zero() {
         return Err(CliFailure::new(
             ExitCode::Configuration,
             "expiry must be positive",
         ));
     }
-    let envelope = prepare_envelope(&arguments)?;
+    let envelope = prepare_envelope(&arguments, expires)?;
     let code = ShareCode::generate().map_err(|_| CoreError::Internal)?;
-    let root =
-        derive_root(code.secret(), &arguments.network).map_err(|_| CoreError::InvalidCode)?;
+    let root = derive_root(code.secret(), network).map_err(|_| CoreError::InvalidCode)?;
     let namespace = DiscoveryNamespace::from_room_id(*root.room_id().as_bytes());
     let code_text = Zeroizing::new(code.to_string());
 
@@ -65,11 +69,11 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
     std::io::stdout().flush().map_err(|_| CoreError::Output)?;
     let actor = SenderActor::new(
         root,
-        arguments.network,
+        network.to_owned(),
         sender_peer.to_bytes(),
         &envelope,
         Instant::now()
-            .checked_add(arguments.expires)
+            .checked_add(expires)
             .ok_or(CoreError::Configuration)?,
         std::time::Duration::from_secs(30),
     )?;
@@ -111,7 +115,10 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
     }
 }
 
-fn prepare_envelope(arguments: &SendArgs) -> Result<SecretEnvelope, CliFailure> {
+fn prepare_envelope(
+    arguments: &SendArgs,
+    expires: std::time::Duration,
+) -> Result<SecretEnvelope, CliFailure> {
     let raw = Zeroizing::new(read_sender_input(&arguments.input)?);
     let (payload, content_type) = if arguments.keys.is_empty() {
         (raw.as_slice().to_vec(), ContentType::DotenvRaw)
@@ -126,8 +133,7 @@ fn prepare_envelope(arguments: &SendArgs) -> Result<SecretEnvelope, CliFailure> 
         .map_err(|_| CoreError::Internal)?
         .as_millis();
     let now_ms = u64::try_from(now_ms).map_err(|_| CoreError::Internal)?;
-    let expiry_ms =
-        u64::try_from(arguments.expires.as_millis()).map_err(|_| CoreError::Configuration)?;
+    let expiry_ms = u64::try_from(expires.as_millis()).map_err(|_| CoreError::Configuration)?;
     let expires_at = now_ms
         .checked_add(expiry_ms)
         .ok_or(CoreError::Configuration)?;
@@ -164,7 +170,11 @@ async fn establish_public_reachability(
         .add_discovery_address(advertised.clone())
         .await
         .map_err(|_| CoreError::Network)?;
-    let ttl_seconds = arguments.expires.as_secs().clamp(30, 300);
+    let ttl_seconds = arguments
+        .expires
+        .ok_or_else(invalid_resolved_config)?
+        .as_secs()
+        .clamp(30, 300);
     let dispatched = dispatch_registration(
         client,
         &arguments.discovery.nodes,
@@ -278,4 +288,8 @@ fn emit_event(json: bool, event: &'static str) {
     } else {
         println!("Share consumed.");
     }
+}
+
+const fn invalid_resolved_config() -> CliFailure {
+    CliFailure::new(ExitCode::Internal, "resolved configuration is incomplete")
 }

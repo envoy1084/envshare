@@ -1,6 +1,6 @@
 //! Shared direct receiver and network helpers.
 
-use std::str::FromStr;
+use std::{io::IsTerminal as _, str::FromStr};
 
 use app_core::{CoreError, DirectReceiver, PendingDirectOffer, ReceiverSession, read_bounded};
 use code::ShareCode;
@@ -32,13 +32,17 @@ impl RunningNetwork {
 pub(crate) async fn receive_direct(
     arguments: &mut ConnectionArgs,
 ) -> Result<(PendingDirectOffer, RunningNetwork), CliFailure> {
+    let network_id = arguments
+        .network
+        .as_deref()
+        .ok_or_else(invalid_resolved_config)?
+        .to_owned();
     let code_text = read_code(arguments)?;
     let code = ShareCode::from_str(code_text.trim())
         .map_err(|_| CliFailure::new(ExitCode::InvalidCode, "invalid share code"))?;
     let keypair = identity::Keypair::generate_ed25519();
     let receiver_peer = keypair.public().to_peer_id();
-    let root =
-        derive_root(code.secret(), &arguments.network).map_err(|_| CoreError::InvalidCode)?;
+    let root = derive_root(code.secret(), &network_id).map_err(|_| CoreError::InvalidCode)?;
     let namespace = DiscoveryNamespace::from_room_id(*root.room_id().as_bytes());
     let privacy = if arguments.discovery.relay_only {
         PrivacyMode::RelayOnly
@@ -62,7 +66,7 @@ pub(crate) async fn receive_direct(
             .map_err(|_| CliFailure::new(ExitCode::Configuration, "invalid sender Peer ID"))?;
         let sender_address = network::Multiaddr::from_str(address)
             .map_err(|_| CliFailure::new(ExitCode::Configuration, "invalid sender address"))?;
-        let session = receiver_session(root, arguments, sender_peer, receiver_peer)?;
+        let session = receiver_session(root, &network_id, sender_peer, receiver_peer)?;
         let pending = DirectReceiver::new(client, session, sender_peer, sender_address)
             .receive()
             .await?;
@@ -74,8 +78,8 @@ pub(crate) async fn receive_direct(
             continue;
         }
         let candidate_root =
-            derive_root(code.secret(), &arguments.network).map_err(|_| CoreError::InvalidCode)?;
-        let session = receiver_session(candidate_root, arguments, route.peer, receiver_peer)?;
+            derive_root(code.secret(), &network_id).map_err(|_| CoreError::InvalidCode)?;
+        let session = receiver_session(candidate_root, &network_id, route.peer, receiver_peer)?;
         if let Ok(pending) = DirectReceiver::new(client.clone(), session, route.peer, route.address)
             .receive()
             .await
@@ -152,13 +156,13 @@ async fn discover_routes(
 
 fn receiver_session(
     root: crypto::DerivedRoot,
-    arguments: &ConnectionArgs,
+    network_id: &str,
     sender_peer: PeerId,
     receiver_peer: PeerId,
 ) -> Result<ReceiverSession, CliFailure> {
     ReceiverSession::new(
         root,
-        arguments.network.clone(),
+        network_id.to_owned(),
         sender_peer.to_bytes(),
         receiver_peer.to_bytes(),
         random_receiver_nonce()?,
@@ -176,6 +180,12 @@ fn read_code(arguments: &mut ConnectionArgs) -> Result<Zeroizing<String>, CliFai
             .map(Zeroizing::new)
             .map_err(|_| CliFailure::new(ExitCode::InvalidCode, "invalid share code"));
     }
+    if !std::io::stdin().is_terminal() {
+        return Err(CliFailure::new(
+            ExitCode::Usage,
+            "interactive code prompt requires a terminal; use --code-stdin",
+        ));
+    }
     rpassword::prompt_password("Share code: ")
         .map(Zeroizing::new)
         .map_err(|_| CliFailure::new(ExitCode::InvalidCode, "could not read share code"))
@@ -186,6 +196,10 @@ fn random_receiver_nonce() -> Result<[u8; 32], CliFailure> {
     getrandom::fill(&mut nonce)
         .map_err(|_| CliFailure::new(ExitCode::Internal, "secure randomness unavailable"))?;
     Ok(nonce)
+}
+
+const fn invalid_resolved_config() -> CliFailure {
+    CliFailure::new(ExitCode::Internal, "resolved configuration is incomplete")
 }
 
 pub(crate) fn read_sender_input(path: &std::path::Path) -> Result<Vec<u8>, CliFailure> {

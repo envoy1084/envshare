@@ -43,6 +43,59 @@ fn invalid_code_never_echoes_the_supplied_value() -> Result<(), Box<dyn Error>> 
 }
 
 #[test]
+fn completions_manpage_and_network_profiles_are_generated() -> Result<(), Box<dyn Error>> {
+    let bash = Command::new(binary())
+        .args(["completions", "bash"])
+        .output()?;
+    assert!(bash.status.success());
+    assert!(String::from_utf8_lossy(&bash.stdout).contains("envshare"));
+    let man = Command::new(binary())
+        .args(["completions", "man"])
+        .output()?;
+    assert!(man.status.success());
+    assert!(String::from_utf8_lossy(&man.stdout).contains(".TH envshare"));
+
+    let directory = tempfile::tempdir()?;
+    let config = directory.path().join("config.toml");
+    let profile = directory.path().join("profile.toml");
+    let peer = network::PeerId::random();
+    fs::write(
+        &profile,
+        format!(
+            "network_id = \"lab\"\nrequire_relay = false\nrendezvous = [\"/ip4/127.0.0.1/tcp/1/p2p/{peer}\"]\n"
+        ),
+    )?;
+    for name in ["lab", "other"] {
+        assert!(
+            Command::new(binary())
+                .arg("--config")
+                .arg(&config)
+                .args(["network", "add", name, "--file"])
+                .arg(&profile)
+                .status()?
+                .success()
+        );
+    }
+    assert!(
+        Command::new(binary())
+            .arg("--config")
+            .arg(&config)
+            .args(["network", "use", "other"])
+            .status()?
+            .success()
+    );
+    let list = Command::new(binary())
+        .arg("--config")
+        .arg(&config)
+        .args(["network", "list"])
+        .output()?;
+    assert!(list.status.success());
+    assert_eq!(String::from_utf8(list.stdout)?, "lab\nother\n");
+    assert_private(&config)?;
+    Ok(())
+}
+
+#[test]
 fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("source.env");
@@ -88,7 +141,11 @@ fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dy
     if !receiver.status.success() {
         let _ = sender.kill();
     }
-    assert!(receiver.status.success());
+    assert!(
+        receiver.status.success(),
+        "receiver failed: {}",
+        String::from_utf8_lossy(&receiver.stderr)
+    );
     assert!(!String::from_utf8_lossy(&receiver.stdout).contains("payload-sentinel"));
     assert!(!String::from_utf8_lossy(&receiver.stderr).contains("payload-sentinel"));
     assert!(sender.wait()?.success());
@@ -134,6 +191,7 @@ fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), B
         "--address",
         &address,
         "--override",
+        "--json",
         "--",
     ]);
     configure_child_assertion(&mut runner);
@@ -142,9 +200,63 @@ fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), B
         let _ = sender.kill();
     }
     assert_eq!(receiver.status.code(), Some(23));
-    assert!(!String::from_utf8_lossy(&receiver.stdout).contains("received-value"));
+    let stdout = String::from_utf8_lossy(&receiver.stdout);
+    assert!(stdout.contains("\"event\":\"child_started\""));
+    assert!(stdout.contains("\"event\":\"child_exited\""));
+    assert!(stdout.contains("\"status\":23"));
+    assert!(!stdout.contains("received-value"));
     assert!(!String::from_utf8_lossy(&receiver.stderr).contains("received-value"));
     assert!(sender.wait()?.success());
+    Ok(())
+}
+
+#[test]
+fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
+    let runtime = tokio::runtime::Runtime::new()?;
+    let node_config = NodeConfig {
+        listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
+        ..NodeConfig::default()
+    };
+    let (node_peer, mut events, node) =
+        NodeServer::new(network::identity::Keypair::generate_ed25519(), &node_config)?;
+    let cancellation = CancellationToken::new();
+    let task = runtime.spawn(node.run(cancellation.clone()));
+    let address = runtime.block_on(async {
+        timeout(Duration::from_secs(5), async {
+            loop {
+                if let Some(NodeEvent::Listening { address }) = events.recv().await {
+                    break Ok::<_, Box<dyn Error>>(address);
+                }
+            }
+        })
+        .await?
+    })?;
+    let directory = tempfile::tempdir()?;
+    let config = directory.path().join("doctor.toml");
+    let endpoint = format!("{address}/p2p/{node_peer}");
+    fs::write(
+        &config,
+        format!(
+            "version = 1\ndefault_network = \"diag\"\n\n[networks.diag]\nnetwork_id = \"diag\"\nrequire_relay = true\nrendezvous = [\"{endpoint}\"]\nrelays = [\"{endpoint}\"]\n"
+        ),
+    )?;
+    let result = Command::new(binary())
+        .arg("--config")
+        .arg(&config)
+        .args(["doctor", "--network", "diag", "--json"])
+        .output()?;
+    assert!(
+        result.status.success(),
+        "doctor failed: {} / {}",
+        String::from_utf8_lossy(&result.stderr),
+        String::from_utf8_lossy(&result.stdout)
+    );
+    let output = String::from_utf8(result.stdout)?;
+    assert!(output.contains("\"event\":\"doctor_complete\""));
+    assert!(!output.contains("envshare-v1-"));
+
+    cancellation.cancel();
+    runtime.block_on(task)??;
     Ok(())
 }
 

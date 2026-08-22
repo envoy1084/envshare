@@ -35,6 +35,12 @@ impl ParsedEnvironment {
     pub const fn variables(&self) -> &BTreeMap<String, String> {
         &self.0
     }
+
+    /// Returns true when any received name already exists in the inherited environment.
+    #[must_use]
+    pub fn conflicts_with_inherited(&self) -> bool {
+        self.0.keys().any(|key| std::env::var_os(key).is_some())
+    }
 }
 
 /// Selects requested keys and emits deterministic normalized dotenv bytes.
@@ -137,6 +143,16 @@ mod tests {
             Err(CoreError::Transfer)
         ));
         assert_eq!(select_dotenv(b"A=1\n", &["MISSING".to_owned()], true)?, b"");
+        Ok(())
+    }
+
+    #[test]
+    fn inherited_conflicts_are_detected_without_exposing_values() -> Result<(), CoreError> {
+        assert!(std::env::var_os("PATH").is_some());
+        let parsed = ParsedEnvironment::parse(b"PATH=untrusted\n")?;
+
+        assert!(parsed.conflicts_with_inherited());
+        assert!(!format!("{parsed:?}").contains("untrusted"));
         Ok(())
     }
 }

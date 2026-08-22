@@ -89,15 +89,15 @@ tests, documentation, and relevant verification commands pass.
 
 ## Phase 5 — Complete production CLI
 
-- [ ] Finish the documented `send`, `receive`, `run`, `doctor`, `network`, and
+- [x] Finish the documented `send`, `receive`, `run`, `doctor`, `network`, and
       `completions` command trees and configuration precedence.
 - [ ] Implement public/direct/relay diagnostics and disposable discovery tests in
       `doctor` without user-derived identifiers.
-- [ ] Complete TTY detection, `NO_COLOR`, code-only mode, JSON streaming, safe
+- [x] Complete TTY detection, `NO_COLOR`, code-only mode, JSON streaming, safe
       debug behavior, exact delivery wording, and stable error/exit contracts.
 - [ ] Complete Unix and Windows process-group behavior and receiver filesystem
       safety on every supported target.
-- [ ] Add shell completions and man pages.
+- [x] Add shell completions and man pages.
 - [ ] Add end-to-end CLI suites covering success, races, interruption, missing
       nodes, overwrite refusal, child processes, and zero secret leakage.
 
