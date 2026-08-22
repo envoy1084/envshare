@@ -226,6 +226,7 @@ async fn reservation_saturation_denies_second_peer() -> Result<(), Box<dyn Error
             NodeEvent::ReservationDenied { .. } => denied += 1,
             NodeEvent::Listening { .. }
             | NodeEvent::CircuitAccepted { .. }
+            | NodeEvent::CircuitClosed { .. }
             | NodeEvent::ReservationClosed { .. }
             | NodeEvent::CircuitDenied { .. }
             | NodeEvent::DiscoveryRegistered { .. }

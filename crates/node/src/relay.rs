@@ -47,6 +47,13 @@ pub enum NodeEvent {
         /// Authenticated destination peer.
         destination: PeerId,
     },
+    /// A relayed circuit closed.
+    CircuitClosed {
+        /// Authenticated source peer.
+        source: PeerId,
+        /// Authenticated destination peer.
+        destination: PeerId,
+    },
     /// A reservation ended normally or timed out.
     ReservationClosed {
         /// Authenticated reserving peer.
@@ -114,6 +121,12 @@ impl NodeServer {
         let peer_id = keypair.public().to_peer_id();
         let status = NodeStatus::default();
         status.expect_listeners(config.listen_addresses.len());
+        status.configure_capacities(
+            config.max_connections,
+            config.max_reservations,
+            config.max_circuits,
+            config.discovery_registrations_total,
+        );
         let behaviour = build_behaviour(&keypair, peer_id, config, status.clone());
         let swarm = SwarmBuilder::with_existing_identity(keypair)
             .with_tokio()
@@ -294,6 +307,14 @@ impl NodeServer {
                 source: src_peer_id,
                 destination: dst_peer_id,
             }),
+            SwarmEvent::Behaviour(BehaviourEvent::Relay(relay::Event::CircuitClosed {
+                src_peer_id,
+                dst_peer_id,
+                ..
+            })) => Some(NodeEvent::CircuitClosed {
+                source: src_peer_id,
+                destination: dst_peer_id,
+            }),
             SwarmEvent::Behaviour(BehaviourEvent::Relay(
                 relay::Event::ReservationClosed { src_peer_id }
                 | relay::Event::ReservationTimedOut { src_peer_id },
@@ -316,6 +337,7 @@ impl NodeServer {
             NodeEvent::ReservationClosed { .. } => self.status.reservation_closed(),
             NodeEvent::ReservationDenied { .. } => self.status.reservation_denied(),
             NodeEvent::CircuitAccepted { .. } => self.status.circuit_accepted(),
+            NodeEvent::CircuitClosed { .. } => self.status.circuit_closed(),
             NodeEvent::CircuitDenied { .. } => self.status.circuit_denied(),
             NodeEvent::DiscoveryRejected { .. } => self.status.discovery_rejected(),
             NodeEvent::Listening { .. }

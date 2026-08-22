@@ -1,0 +1,132 @@
+groups:
+  - name: envshare-node
+    interval: 30s
+    rules:
+      - alert: EnvshareNodeDown
+        expr: up{job=~"envshare-node.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Envshare node cannot be scraped
+          description: "Prometheus has failed to scrape {{ $labels.instance }} for two minutes."
+
+      - alert: EnvshareNodeNotReady
+        expr: envshare_node_live == 1 and envshare_node_ready == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Envshare node is live but not ready
+          description: "{{ $labels.instance }} has rejected readiness for five minutes."
+
+      - alert: EnvshareNodeRestartLoop
+        expr: changes(envshare_node_start_time_seconds[15m]) > 2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Envshare node is restarting repeatedly
+          description: "{{ $labels.instance }} restarted more than twice in fifteen minutes."
+
+      - alert: EnvshareNodeListenerLost
+        expr: envshare_node_listeners < envshare_node_listener_capacity
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Envshare node lost a configured listener
+          description: "{{ $labels.instance }} has fewer active listeners than configured."
+
+      - alert: EnvshareNodeConnectionCapacityHigh
+        expr: envshare_node_connections / envshare_node_connection_capacity > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare connection capacity is above 85 percent
+          description: "{{ $labels.instance }} has sustained high connection utilization."
+
+      - alert: EnvshareNodeReservationCapacityHigh
+        expr: envshare_node_reservations / envshare_node_reservation_capacity > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare relay reservation capacity is above 85 percent
+          description: "{{ $labels.instance }} has sustained high reservation utilization."
+
+      - alert: EnvshareNodeCircuitCapacityHigh
+        expr: envshare_node_circuits / envshare_node_circuit_capacity > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare relay circuit capacity is above 85 percent
+          description: "{{ $labels.instance }} has sustained high circuit utilization."
+
+      - alert: EnvshareNodeDiscoveryCapacityHigh
+        expr: envshare_node_discovery_registrations / envshare_node_discovery_registration_capacity > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare discovery capacity is above 85 percent
+          description: "{{ $labels.instance }} has sustained high registration utilization."
+
+      - alert: EnvshareNodeAdmissionRejectionsHigh
+        expr: rate(envshare_node_admission_rejected_total[5m]) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare source admission rejection rate is elevated
+          description: "{{ $labels.instance }} is rejecting more than five inbound attempts per second."
+
+      - alert: EnvshareNodeProtocolRejectionsHigh
+        expr: rate(envshare_node_reservations_denied_total[5m]) + rate(envshare_node_circuits_denied_total[5m]) + rate(envshare_node_discovery_rejected_total[5m]) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare protocol rejection rate is elevated
+          description: "The fleet is sustaining more than two bounded protocol rejections per second."
+
+      - alert: EnvshareNodeEventsDropped
+        expr: increase(envshare_node_events_dropped_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare operational events were dropped
+          description: "{{ $labels.instance }} exhausted its bounded operational event queue."
+
+      - alert: EnvshareRegionalReadinessProbeFailed
+        expr: min by (region) (probe_success{module="envshare_node_ready"}) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: A regional Envshare readiness probe is failing
+          description: "External readiness probes are failing from region {{ $labels.region }}."
+
+  - name: envshare-node-platform-examples
+    interval: 30s
+    rules:
+      - alert: EnvshareContainerMemoryHigh
+        expr: container_memory_working_set_bytes{container="envshare-node"} / container_spec_memory_limit_bytes{container="envshare-node"} > 0.80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare container memory is above 80 percent
+          description: "{{ $labels.instance }} is approaching its cgroup memory limit."
+
+      - alert: EnvshareProcessFileDescriptorsHigh
+        expr: process_open_fds{job=~"envshare-node.*"} / process_max_fds{job=~"envshare-node.*"} > 0.80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Envshare file descriptor use is above 80 percent
+          description: "{{ $labels.instance }} is approaching its file descriptor limit."

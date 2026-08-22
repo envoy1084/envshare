@@ -320,6 +320,7 @@ fn event_name(event: &NodeEvent) -> &'static str {
         NodeEvent::ReservationAccepted { renewed: false, .. } => "reservation_accepted",
         NodeEvent::ReservationAccepted { renewed: true, .. } => "reservation_renewed",
         NodeEvent::CircuitAccepted { .. } => "circuit_accepted",
+        NodeEvent::CircuitClosed { .. } => "circuit_closed",
         NodeEvent::ReservationClosed { .. } => "reservation_closed",
         NodeEvent::ReservationDenied { .. } => "reservation_denied",
         NodeEvent::CircuitDenied { .. } => "circuit_denied",
@@ -352,6 +353,10 @@ mod tests {
                 renewed: false,
             },
             NodeEvent::CircuitAccepted {
+                source: peer,
+                destination: peer,
+            },
+            NodeEvent::CircuitClosed {
                 source: peer,
                 destination: peer,
             },

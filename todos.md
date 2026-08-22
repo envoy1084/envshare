@@ -110,7 +110,7 @@ tests, documentation, and relevant verification commands pass.
 - [x] Add safe JSON logs and optional OTLP tracing behind a feature flag.
 - [x] Add Dockerfile, Compose, native systemd service, sample configuration,
       firewall guidance, hardening, resource limits, and health checks.
-- [ ] Add Prometheus alerts, a Grafana dashboard, backup/restore, rolling upgrade,
+- [x] Add Prometheus alerts, a Grafana dashboard, backup/restore, rolling upgrade,
       identity rotation, overload, abuse, and incident runbooks.
 - [ ] Add load and multi-day soak harnesses and document tested capacity limits.
 

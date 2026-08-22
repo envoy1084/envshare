@@ -76,6 +76,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 - [Node identity operations](docs/node-identity.md)
 - [Node configuration](docs/node-configuration.md)
 - [Node deployment](docs/deployment.md)
+- [Node operations](docs/operations.md)
 - [Command-line interface](docs/cli.md)
 - [Client configuration](docs/configuration.md)
 - [Protocol specification](protocol/protocol.md)
