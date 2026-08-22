@@ -34,9 +34,9 @@ tests, documentation, and relevant verification commands pass.
       verification with secret-safe errors.
 - [x] Implement bounded CBOR Open, Offer, Acknowledge, Completed, and protocol
       error messages with four-byte framing and rejection before allocation.
-- [ ] Implement the fail-closed sender actor, exact-offer retry cache, idempotent
+- [x] Implement the fail-closed sender actor, exact-offer retry cache, idempotent
       acknowledgement, expiration, and delivery-unknown transitions.
-- [ ] Implement receiver-side proof verification, key derivation, decryption, and
+- [x] Implement receiver-side proof verification, key derivation, decryption, and
       envelope validation.
 - [ ] Add unit, property, concurrency, golden-vector, malformed-input, oversized
       frame, two-receiver race, retry, and acknowledgement-loss tests.

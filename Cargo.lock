@@ -528,9 +528,11 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "code",
  "crypto",
+ "getrandom 0.4.3",
  "network",
  "protocol",
  "thiserror 2.0.20",
+ "zeroize",
 ]
 
 [[package]]
@@ -2605,6 +2607,7 @@ dependencies = [
  "minicbor",
  "proptest",
  "thiserror 2.0.20",
+ "zeroize",
 ]
 
 [[package]]

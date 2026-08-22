@@ -236,3 +236,22 @@ pub struct OfferProofInput<'a> {
     /// Digest of AEAD nonce and ciphertext.
     pub ciphertext_digest: CiphertextDigest,
 }
+
+/// Fields bound as AEAD associated data for an encrypted envelope.
+#[derive(Clone, Copy)]
+pub struct PayloadAadInput<'a> {
+    /// Common authenticated peer context.
+    pub context: PeerContext<'a>,
+    /// Receiver challenge from Open.
+    pub receiver_nonce: ReceiverNonce,
+    /// Sender challenge generated for the claim.
+    pub sender_nonce: SenderNonce,
+    /// Winning claim identifier.
+    pub claim_id: ClaimId,
+    /// Sender-authoritative expiry timestamp.
+    pub expires_at_unix_ms: u64,
+    /// Stable wire content-type discriminant.
+    pub content_type: u8,
+    /// Authenticated raw payload byte length.
+    pub plaintext_length: u32,
+}

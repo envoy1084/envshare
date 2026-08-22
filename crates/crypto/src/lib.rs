@@ -10,7 +10,7 @@ mod proof;
 mod transcript;
 mod types;
 
-pub use aead::{decrypt_payload, encrypt_payload, generate_aead_nonce};
+pub use aead::{decrypt_payload, encrypt_payload, generate_aead_nonce, payload_associated_data};
 pub use digest::{ciphertext_digest, verify_ciphertext_digest};
 pub use error::CryptoError;
 pub use kdf::{derive_root, derive_session};
@@ -18,8 +18,8 @@ pub use proof::{acknowledgement_proof, offer_proof, open_proof};
 pub use transcript::Transcript;
 pub use types::{
     AcknowledgementKey, AeadNonce, AuthenticationKey, AuthenticationProof, CiphertextDigest,
-    ClaimId, DerivedRoot, OfferProofInput, PayloadKey, PeerContext, ReceiverNonce, RoomId,
-    SenderNonce, SessionBaseKey, SessionKeys,
+    ClaimId, DerivedRoot, OfferProofInput, PayloadAadInput, PayloadKey, PeerContext, ReceiverNonce,
+    RoomId, SenderNonce, SessionBaseKey, SessionKeys,
 };
 
 /// Domain separation label used by the v1 root key derivation.

@@ -3,8 +3,12 @@
 #![forbid(unsafe_code)]
 
 mod error;
+mod receiver;
+mod sender;
 
 pub use error::CoreError;
+pub use receiver::{ReceiverSession, VerifiedOffer};
+pub use sender::{OfferEntropy, OsEntropy, SenderActor, SenderState};
 
 /// Returns the wire protocol supported by this build.
 #[must_use]

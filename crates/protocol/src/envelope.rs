@@ -3,6 +3,7 @@
 use std::fmt;
 
 use minicbor::{Decoder, Encoder, data::Type};
+use zeroize::Zeroize;
 
 use crate::{MAX_ENVELOPE_BYTES, MAX_PAYLOAD_BYTES, MAX_SUGGESTED_NAME_BYTES};
 
@@ -127,8 +128,8 @@ impl SecretEnvelope {
 
     /// Transfers ownership of the secret payload to the receiver output boundary.
     #[must_use]
-    pub fn into_payload(self) -> Vec<u8> {
-        self.payload
+    pub fn into_payload(mut self) -> Vec<u8> {
+        std::mem::take(&mut self.payload)
     }
 
     /// Encodes the strict v1 CBOR envelope.
@@ -230,6 +231,12 @@ impl SecretEnvelope {
             expires_at_unix_ms,
             payload.to_vec(),
         )
+    }
+}
+
+impl Drop for SecretEnvelope {
+    fn drop(&mut self) {
+        self.payload.zeroize();
     }
 }
 
