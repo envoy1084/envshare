@@ -91,6 +91,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 - [Node operations](docs/operations.md)
 - [Node load and soak testing](docs/load-testing.md)
 - [Installation](docs/installation.md)
+- [Release and rollback](docs/release.md)
 - [Command-line interface](docs/cli.md)
 - [Client configuration](docs/configuration.md)
 - [Protocol specification](protocol/protocol.md)
