@@ -18,6 +18,8 @@ use protocol::{PROTOCOL_VERSION, ProtocolErrorCode, ProtocolErrorResponse, Trans
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 
+const FEDERATED_PAYLOAD: &[u8] = b"PUBLIC_TEST=capability-authenticated\n";
+
 fn binary() -> &'static str {
     env!("CARGO_BIN_EXE_envshare")
 }
@@ -404,8 +406,7 @@ fn relay_only_profile_transfers_without_a_direct_listener() -> Result<(), Box<dy
 }
 
 #[test]
-fn federated_send_waits_for_registration_and_receives_without_route_arguments()
--> Result<(), Box<dyn Error>> {
+fn federated_transfer_survives_two_of_three_nodes_unavailable() -> Result<(), Box<dyn Error>> {
     let runtime = tokio::runtime::Runtime::new()?;
     let config = local_node_config()?;
     let (node_peer, mut node_events, node) =
@@ -423,16 +424,12 @@ fn federated_send_waits_for_registration_and_receives_without_route_arguments()
         .await?
     })?;
     let endpoint = format!("{node_address}/p2p/{node_peer}");
-    let unavailable_peer_one = network::PeerId::random();
-    let unavailable_peer_two = network::PeerId::random();
-    let unavailable_endpoint_one = format!("/ip4/127.0.0.1/tcp/1/p2p/{unavailable_peer_one}");
-    let unavailable_endpoint_two = format!("/ip4/127.0.0.1/tcp/2/p2p/{unavailable_peer_two}");
-
+    let unavailable_endpoint_one = unavailable_endpoint(1);
+    let unavailable_endpoint_two = unavailable_endpoint(2);
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("public.env");
     let output = directory.path().join("public.received.env");
-    let payload = b"PUBLIC_TEST=capability-authenticated\n";
-    fs::write(&input, payload)?;
+    fs::write(&input, FEDERATED_PAYLOAD)?;
     let mut sender = Command::new(binary())
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
         .args([
@@ -503,7 +500,7 @@ fn federated_send_waits_for_registration_and_receives_without_route_arguments()
     if !receiver.status.success() {
         let _ = sender.kill();
     }
-    assert_successful_payload(&receiver, &output, payload)?;
+    assert_successful_payload(&receiver, &output, FEDERATED_PAYLOAD)?;
     assert!(malicious.challenged.load(Ordering::SeqCst));
     assert!(sender.wait()?.success());
 
@@ -523,6 +520,13 @@ fn assert_successful_payload(
     assert!(result.status.success());
     assert_eq!(fs::read(output)?, expected);
     Ok(())
+}
+
+fn unavailable_endpoint(port: u16) -> String {
+    format!(
+        "/ip4/127.0.0.1/tcp/{port}/p2p/{}",
+        network::PeerId::random()
+    )
 }
 
 fn assert_wrong_network_isolated(
