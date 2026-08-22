@@ -20,6 +20,18 @@ The capability is a bearer secret. Anyone who obtains it can claim the share.
 Envshare does not protect a secret after an authorized receiver obtains it and
 does not provide anonymity.
 
+## Installation
+
+Install a versioned release on Linux or macOS:
+
+```console
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/envshare/envshare/releases/download/v0.1.0-alpha.1/install.sh | sh
+```
+
+Windows PowerShell and explicit-location commands are documented in the
+[installation guide](docs/installation.md). Release installers verify the
+archive SHA-256 before installing it and never prompt or edit shell profiles.
+
 ## Commands
 
 Start a node with a persistent identity, then use its printed endpoint for
@@ -78,6 +90,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 - [Node deployment](docs/deployment.md)
 - [Node operations](docs/operations.md)
 - [Node load and soak testing](docs/load-testing.md)
+- [Installation](docs/installation.md)
 - [Command-line interface](docs/cli.md)
 - [Client configuration](docs/configuration.md)
 - [Protocol specification](protocol/protocol.md)

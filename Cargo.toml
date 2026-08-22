@@ -111,8 +111,9 @@ inherits = "release"
 lto = "fat"
 
 [workspace.metadata.dist]
-# The generated workflow is intentionally kept Apache-2.0-only and carries a
-# one-line cargo-dist 0.32.0 SBOM output fix; review it explicitly on upgrades.
+# The generated workflow is intentionally kept Apache-2.0-only, publishes the
+# first-party installers, and carries a cargo-dist 0.32.0 SBOM output fix.
+# Review those local changes explicitly on cargo-dist upgrades.
 allow-dirty = ["ci"]
 cargo-dist-version = "0.32.0"
 ci = ["github"]

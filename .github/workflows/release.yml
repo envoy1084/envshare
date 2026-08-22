@@ -291,6 +291,9 @@ jobs:
         run: |
           # Remove the granular manifests
           rm -f artifacts/*-dist-manifest.json
+          # Publish stable first-party installer names alongside dist's installers.
+          cp install.sh artifacts/install.sh
+          cp install.ps1 artifacts/install.ps1
       - name: Attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
         with:

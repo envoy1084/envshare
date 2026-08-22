@@ -120,9 +120,9 @@ tests, documentation, and relevant verification commands pass.
       macOS, and Windows architectures.
 - [x] Add GitHub release workflows for tagged builds, checksums, SBOMs,
       provenance/attestations, artifact signing, and release notes.
-- [ ] Add a versioned HTTPS `install.sh` supporting platform detection, checksum
+- [x] Add a versioned HTTPS `install.sh` supporting platform detection, checksum
       verification, explicit install location, and non-interactive operation.
-- [ ] Add PowerShell installation for Windows with equivalent verification.
+- [x] Add PowerShell installation for Windows with equivalent verification.
 - [ ] Add Homebrew formula generation and document package-manager installation.
 - [ ] Add release dry-run, installer smoke tests, clean-machine tests, and rollback
       documentation.
