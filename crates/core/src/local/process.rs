@@ -80,7 +80,10 @@ pub async fn wait_child_forwarding_interrupt(
         status = child.wait() => status.map_err(|_| CoreError::ChildProcess),
         interrupt = tokio::signal::ctrl_c() => {
             interrupt.map_err(|_| CoreError::ChildProcess)?;
-            interrupt_child(&mut child)?;
+            #[cfg(unix)]
+            interrupt_child_tree(&mut child).await?;
+            #[cfg(windows)]
+            interrupt_child_tree(&mut child)?;
             child.wait().await.map_err(|_| CoreError::ChildProcess)
         }
     }
@@ -97,16 +100,22 @@ fn configure_process_group(command: &mut CommandWrap) {
 }
 
 #[cfg(unix)]
-fn interrupt_child(child: &mut ManagedChild) -> Result<(), CoreError> {
+async fn interrupt_child_tree(child: &mut ManagedChild) -> Result<(), CoreError> {
     use nix::sys::signal::Signal;
 
     child
         .signal(Signal::SIGINT as i32)
-        .map_err(|_| CoreError::ChildProcess)
+        .map_err(|_| CoreError::ChildProcess)?;
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    match child.start_kill() {
+        Ok(()) => Ok(()),
+        Err(error) if error.raw_os_error() == Some(nix::libc::ESRCH) => Ok(()),
+        Err(_) => Err(CoreError::ChildProcess),
+    }
 }
 
 #[cfg(windows)]
-fn interrupt_child(child: &mut ManagedChild) -> Result<(), CoreError> {
+fn interrupt_child_tree(child: &mut ManagedChild) -> Result<(), CoreError> {
     child.start_kill().map_err(|_| CoreError::ChildProcess)
 }
 

@@ -18,7 +18,10 @@ is resolved before network activity using the precedence documented in
   shell. Received variables fill absent inherited names by default. `--override`
   replaces matches, `--clean-env` removes the inherited environment, and
   `--strict` rejects every collision. `--json` emits `child_started` and
-  `child_exited` records; the child retains its normal stdout and stderr.
+  `child_exited` records; the child retains its normal stdout and stderr. An
+  interrupt is forwarded first, then the contained Unix process group or
+  Windows Job Object is terminated after a short grace period so descendants
+  cannot escape.
 
 Receivers prompt for the capability only on a terminal. Automation must use
 `--code-stdin` or `--code`; command-line arguments may be observable to other

@@ -498,6 +498,7 @@ dependencies = [
  "getrandom 0.4.3",
  "humantime",
  "network",
+ "nix 0.31.3",
  "node",
  "protocol",
  "rpassword",

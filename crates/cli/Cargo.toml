@@ -44,3 +44,6 @@ workspace = true
 [dev-dependencies]
 node = { version = "=0.1.0-alpha.1", path = "../node" }
 tempfile.workspace = true
+
+[target.'cfg(unix)'.dev-dependencies]
+nix.workspace = true

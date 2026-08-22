@@ -98,7 +98,7 @@ tests, documentation, and relevant verification commands pass.
 - [x] Complete Unix and Windows process-group behavior and receiver filesystem
       safety on every supported target.
 - [x] Add shell completions and man pages.
-- [ ] Add end-to-end CLI suites covering success, races, interruption, missing
+- [x] Add end-to-end CLI suites covering success, races, interruption, missing
       nodes, overwrite refusal, child processes, and zero secret leakage.
 
 ## Phase 6 — Production node and operations
