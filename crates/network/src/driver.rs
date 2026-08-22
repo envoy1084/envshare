@@ -91,6 +91,16 @@ pub enum NetworkEvent {
         /// Authenticated peer whose cached record expired.
         peer: PeerId,
     },
+    /// A bounded set of peers was observed on the local multicast domain.
+    LanDiscovered {
+        /// Unauthenticated candidates that still require capability authentication.
+        peers: Vec<DiscoveredPeer>,
+    },
+    /// A local multicast record expired.
+    LanExpired {
+        /// Peer whose local record expired.
+        peer: PeerId,
+    },
 }
 
 enum Command {
@@ -513,6 +523,7 @@ impl NetworkDriver {
             SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(event)) => {
                 self.handle_rendezvous_event(event);
             }
+            SwarmEvent::Behaviour(BehaviourEvent::Mdns(event)) => self.handle_mdns_event(event),
             SwarmEvent::NewListenAddr { address, .. } => {
                 let _ = self.events.try_send(NetworkEvent::Listening { address });
             }
@@ -629,6 +640,30 @@ impl NetworkDriver {
             }
         };
         let _ = self.events.try_send(event);
+    }
+
+    fn handle_mdns_event(&mut self, event: libp2p::mdns::Event) {
+        match event {
+            libp2p::mdns::Event::Discovered(records) => {
+                let mut peers = Vec::<DiscoveredPeer>::new();
+                for (peer, address) in records.into_iter().take(self.max_discovery_results) {
+                    if let Some(discovered) = peers.iter_mut().find(|item| item.peer == peer) {
+                        discovered.addresses.push(address);
+                    } else {
+                        peers.push(DiscoveredPeer {
+                            peer,
+                            addresses: vec![address],
+                        });
+                    }
+                }
+                let _ = self.events.try_send(NetworkEvent::LanDiscovered { peers });
+            }
+            libp2p::mdns::Event::Expired(records) => {
+                for (peer, _) in records.into_iter().take(self.max_discovery_results) {
+                    let _ = self.events.try_send(NetworkEvent::LanExpired { peer });
+                }
+            }
+        }
     }
 
     fn handle_inbound_request(

@@ -10,7 +10,11 @@ mod driver;
 mod error;
 
 pub use config::NetworkConfig;
-pub use discovery::{DiscoveredPeer, DiscoveryNamespace, DiscoveryProvider};
+pub use discovery::{
+    CandidatePolicy, CandidateSet, DiscoveredPeer, DiscoveryNamespace, DiscoveryNode,
+    DiscoveryProvider, PrivacyMode, RouteCandidate, RouteKind, dispatch_discovery,
+    dispatch_registration, dispatch_unregistration, maintain_registrations, renewal_delay,
+};
 pub use driver::{InboundRequestId, NetworkClient, NetworkDriver, NetworkEvent};
 pub use error::NetworkError;
 pub use libp2p::identity;

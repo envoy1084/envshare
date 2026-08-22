@@ -2,6 +2,8 @@
 
 use std::time::Duration;
 
+use crate::PrivacyMode;
+
 /// Hard operational bounds for one client swarm.
 #[derive(Clone, Debug)]
 pub struct NetworkConfig {
@@ -21,6 +23,10 @@ pub struct NetworkConfig {
     pub max_process_memory_bytes: usize,
     /// Maximum registrations accepted from one discovery response.
     pub max_discovery_results: usize,
+    /// Enables local-network multicast discovery in standard privacy mode.
+    pub enable_mdns: bool,
+    /// Controls whether direct addresses may be exposed or dialed.
+    pub privacy_mode: PrivacyMode,
 }
 
 impl Default for NetworkConfig {
@@ -34,6 +40,8 @@ impl Default for NetworkConfig {
             max_connections_per_peer: 4,
             max_process_memory_bytes: 512 * 1024 * 1024,
             max_discovery_results: 32,
+            enable_mdns: false,
+            privacy_mode: PrivacyMode::Standard,
         }
     }
 }

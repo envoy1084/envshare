@@ -47,6 +47,7 @@ libp2p = { version = "0.56.0", default-features = false, features = [
     "identify",
     "macros",
     "memory-connection-limits",
+    "mdns",
     "noise",
     "ping",
     "quic",

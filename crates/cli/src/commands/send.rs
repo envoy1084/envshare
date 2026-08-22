@@ -127,7 +127,9 @@ async fn wait_for_listener(
             | NetworkEvent::DiscoveryRegistered { .. }
             | NetworkEvent::DiscoveryResults { .. }
             | NetworkEvent::DiscoveryFailed { .. }
-            | NetworkEvent::DiscoveryExpired { .. } => {}
+            | NetworkEvent::DiscoveryExpired { .. }
+            | NetworkEvent::LanDiscovered { .. }
+            | NetworkEvent::LanExpired { .. } => {}
         }
     }
 }
