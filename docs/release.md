@@ -9,7 +9,8 @@ targets. All project source and release metadata use Apache-2.0 only.
 1. Start from a reviewed, clean `main` commit with all required CI checks green.
 2. Update the workspace version, both first-party installer defaults, `Cargo.lock`,
    and `CHANGELOG.md` in one release-preparation change.
-3. Run the full repository gates described in [contributing](../CONTRIBUTING.md).
+3. Run the [release quality gates](quality-gates.md); the abbreviated pull-request
+   workflow is not release-candidate evidence.
 4. Install the exact dist version recorded in `Cargo.toml`, then run:
 
    ```console

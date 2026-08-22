@@ -38,3 +38,7 @@ cargo nextest run --workspace --all-targets --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 cargo deny check
 ```
+
+These are development checks. Release candidates must also pass the heavier,
+local/manual [release quality gates](docs/quality-gates.md); they intentionally do
+not run on every pull request.

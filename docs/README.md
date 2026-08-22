@@ -33,6 +33,6 @@ Start with the [user guide](user-guide.md), then use the focused references belo
 ## Ship releases
 
 - [Release and rollback](release.md)
+- [Release quality gates](quality-gates.md)
 - [Security reporting policy](../SECURITY.md)
 - [Contribution workflow](../CONTRIBUTING.md)
-
