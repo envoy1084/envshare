@@ -17,7 +17,7 @@ tests, documentation, and relevant verification commands pass.
 - [x] Publish v1 specifications for capability encoding, canonical transcripts,
       cryptographic domains, messages, CDDL, lifecycle semantics, and test-vector
       format.
-- [x] Add `README.md`, contribution guidance, dual licenses, `SECURITY.md`, threat
+- [x] Add `README.md`, contribution guidance, the Apache 2.0 license, `SECURITY.md`, threat
       model, architecture overview, and protocol compatibility policy.
 - [x] Add pull-request CI for Linux, macOS, and Windows with formatting, Clippy,
       tests, docs, dependency audit, and policy checks.

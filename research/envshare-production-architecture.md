@@ -1266,8 +1266,7 @@ envshare/
 ├── Cargo.lock
 ├── rust-toolchain.toml
 ├── deny.toml
-├── LICENSE-APACHE
-├── LICENSE-MIT
+├── LICENSE
 ├── SECURITY.md
 ├── crates/
 │   ├── envshare-cli/

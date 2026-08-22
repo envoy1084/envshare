@@ -84,9 +84,4 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 
 ## License
 
-Envshare is licensed under either of
-
-- Apache License, Version 2.0, or
-- MIT License
-
-at your option.
+Envshare is licensed under the [Apache License, Version 2.0](LICENSE).
