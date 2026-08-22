@@ -1,0 +1,58 @@
+name: envshare
+
+services:
+  node:
+    image: ${ENVSHARE_NODE_IMAGE:-envshare-node:local}
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        NODE_FEATURES: ${ENVSHARE_NODE_FEATURES:-}
+    network_mode: host
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45s
+    command:
+      - serve
+      - --identity
+      - /var/lib/envshare-node/identity.key
+      - --config
+      - /etc/envshare-node/node.toml
+
+    user: "10001:10001"
+    read_only: true
+    volumes:
+      - ../config/node.example.toml:/etc/envshare-node/node.toml:ro
+      - envshare-data:/var/lib/envshare-node
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 1536m
+    mem_reservation: 1280m
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      core:
+        soft: 0
+        hard: 0
+
+    healthcheck:
+      test:
+        - CMD
+        - /usr/local/bin/envshare-node
+        - healthcheck
+        - --url
+        - http://127.0.0.1:9100/health/ready
+      interval: 30s
+      timeout: 4s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  envshare-data:

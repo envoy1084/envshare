@@ -25,12 +25,30 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Validate node configuration.
+    Config(ConfigArgs),
     /// Manage the stable Ed25519 node identity.
     Key(KeyArgs),
     /// Run the bounded relay service.
     Serve(ServeArgs),
     /// Check a loopback node health endpoint.
     Healthcheck(HealthcheckArgs),
+}
+
+#[derive(Debug, Args)]
+struct ConfigArgs {
+    #[command(subcommand)]
+    command: ConfigCommand,
+}
+
+#[derive(Debug, Subcommand)]
+enum ConfigCommand {
+    /// Validate a strict bounded configuration file without binding sockets.
+    Check {
+        /// Node configuration file.
+        #[arg(long)]
+        config: PathBuf,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -91,10 +109,21 @@ async fn main() {
 
 async fn run(cli: Cli) -> Result<(), NodeError> {
     match cli.command {
+        Command::Config(arguments) => run_config(arguments),
         Command::Key(arguments) => run_key(arguments),
         Command::Serve(arguments) => run_server(arguments).await,
         Command::Healthcheck(arguments) => run_healthcheck(&arguments.url).await,
     }
+}
+
+fn run_config(arguments: ConfigArgs) -> Result<(), NodeError> {
+    match arguments.command {
+        ConfigCommand::Check { config } => {
+            let _ = NodeConfig::load(&config)?;
+            println!("configuration valid");
+        }
+    }
+    Ok(())
 }
 
 fn run_key(arguments: KeyArgs) -> Result<(), NodeError> {

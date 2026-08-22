@@ -108,7 +108,7 @@ tests, documentation, and relevant verification commands pass.
 - [x] Implement loopback health, readiness, graceful drain, and OpenMetrics
       endpoints with low-cardinality labels.
 - [x] Add safe JSON logs and optional OTLP tracing behind a feature flag.
-- [ ] Add Dockerfile, Compose, native systemd service, sample configuration,
+- [x] Add Dockerfile, Compose, native systemd service, sample configuration,
       firewall guidance, hardening, resource limits, and health checks.
 - [ ] Add Prometheus alerts, a Grafana dashboard, backup/restore, rolling upgrade,
       identity rotation, overload, abuse, and incident runbooks.

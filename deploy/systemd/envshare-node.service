@@ -1,0 +1,56 @@
+[Unit]
+Description=Envshare libp2p discovery and relay node
+Documentation=https://github.com/envshare/envshare/blob/main/docs/deployment.md
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=envshare
+Group=envshare
+UMask=0077
+WorkingDirectory=/var/lib/envshare-node
+ExecStart=/usr/local/bin/envshare-node serve --identity /var/lib/envshare-node/identity.key --config /etc/envshare-node/node.toml
+ExecStartPre=/usr/local/bin/envshare-node config check --config /etc/envshare-node/node.toml
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=30s
+TimeoutStopSec=45s
+KillSignal=SIGTERM
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+ReadWritePaths=/var/lib/envshare-node
+ReadOnlyPaths=/etc/envshare-node
+LimitNOFILE=65536
+LimitCORE=0
+TasksMax=256
+MemoryHigh=1280M
+MemoryMax=1536M
+Environment=RUST_BACKTRACE=0
+
+[Install]
+WantedBy=multi-user.target

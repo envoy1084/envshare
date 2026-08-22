@@ -75,6 +75,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 - [Secret output policy](docs/secret-output-policy.md)
 - [Node identity operations](docs/node-identity.md)
 - [Node configuration](docs/node-configuration.md)
+- [Node deployment](docs/deployment.md)
 - [Command-line interface](docs/cli.md)
 - [Client configuration](docs/configuration.md)
 - [Protocol specification](protocol/protocol.md)

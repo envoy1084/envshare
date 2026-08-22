@@ -1,0 +1,9 @@
+.git
+.github
+target
+fuzz/target
+**/*.profraw
+.DS_Store
+.env
+.env.*
+deploy/docker/state

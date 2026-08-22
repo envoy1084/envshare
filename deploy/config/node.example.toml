@@ -1,0 +1,42 @@
+listen_addresses = [
+  "/ip4/0.0.0.0/tcp/4001",
+  "/ip4/0.0.0.0/udp/4001/quic-v1",
+]
+
+max_reservations = 128
+max_reservations_per_peer = 2
+reservation_duration = "1h"
+max_circuits = 64
+max_circuits_per_peer = 4
+max_circuit_duration = "2m"
+max_circuit_bytes = 2097152
+
+max_connections = 512
+max_connections_per_peer = 8
+max_connections_per_ip = 32
+connection_attempts_per_ip_per_minute = 120
+connection_rate_limit_ips = 4096
+max_process_memory_bytes = 1073741824
+event_capacity = 256
+operations_address = "127.0.0.1:9100"
+shutdown_grace_period = "30s"
+
+discovery_min_ttl_seconds = 30
+discovery_max_ttl_seconds = 300
+discovery_registrations_per_peer = 8
+discovery_registrations_total = 256
+discovery_registrations_per_namespace = 32
+discovery_cookies = 512
+discovery_addresses_per_registration = 8
+discovery_record_bytes = 16384
+discovery_results = 32
+discovery_register_requests_per_minute = 12
+discovery_discover_requests_per_minute = 30
+discovery_rate_limit_peers = 1024
+discovery_allow_private_addresses = false
+
+[telemetry]
+log_format = "json"
+log_filter = "info,libp2p=warn"
+otlp_endpoint = ""
+otlp_sample_ratio = 0.01
