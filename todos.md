@@ -116,9 +116,9 @@ tests, documentation, and relevant verification commands pass.
 
 ## Phase 7 — Distribution, publishing, and public beta
 
-- [ ] Configure `cargo-dist` for signed archives/installers across supported Linux,
+- [x] Configure `cargo-dist` for signed archives/installers across supported Linux,
       macOS, and Windows architectures.
-- [ ] Add GitHub release workflows for tagged builds, checksums, SBOMs,
+- [x] Add GitHub release workflows for tagged builds, checksums, SBOMs,
       provenance/attestations, artifact signing, and release notes.
 - [ ] Add a versioned HTTPS `install.sh` supporting platform detection, checksum
       verification, explicit install location, and non-interactive operation.

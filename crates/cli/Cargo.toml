@@ -41,6 +41,13 @@ zeroize.workspace = true
 [lints]
 workspace = true
 
+[package.metadata.dist]
+changelog = "../../CHANGELOG.md"
+display-name = "Envshare"
+dist = true
+formula = "envshare"
+installers = ["shell", "powershell", "homebrew"]
+
 [dev-dependencies]
 node = { version = "=0.1.0-alpha.1", path = "../node" }
 tempfile.workspace = true

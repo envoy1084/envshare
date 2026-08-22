@@ -109,3 +109,33 @@ strip = "symbols"
 [profile.dist]
 inherits = "release"
 lto = "fat"
+
+[workspace.metadata.dist]
+# The generated workflow is intentionally kept Apache-2.0-only and carries a
+# one-line cargo-dist 0.32.0 SBOM output fix; review it explicitly on upgrades.
+allow-dirty = ["ci"]
+cargo-dist-version = "0.32.0"
+ci = ["github"]
+packages = ["cli", "node"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+]
+checksum = "sha256"
+cargo-auditable = true
+cargo-cyclonedx = true
+github-attestations = true
+github-attestations-phase = "host"
+github-release = "host"
+install-success-msg = "Envshare is installed. Run 'envshare --help' to get started."
+pr-run-mode = "plan"
+source-tarball = true
+
+[workspace.metadata.dist.github-action-commits]
+"actions/attest" = "1e69f48acb82d1966a394da916b4c1698aa569d6"
+"actions/checkout" = "d23441a48e516b6c34aea4fa41551a30e30af803"
+"actions/download-artifact" = "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+"actions/upload-artifact" = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"

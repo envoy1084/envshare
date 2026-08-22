@@ -51,6 +51,16 @@ zeroize.workspace = true
 [lints]
 workspace = true
 
+[package.metadata.dist]
+changelog = "../../CHANGELOG.md"
+display-name = "Envshare Node"
+dist = true
+installers = []
+targets = [
+    "aarch64-unknown-linux-gnu",
+    "x86_64-unknown-linux-gnu",
+]
+
 [dev-dependencies]
 network.workspace = true
 protocol.workspace = true
