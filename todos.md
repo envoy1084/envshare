@@ -123,7 +123,7 @@ tests, documentation, and relevant verification commands pass.
 - [x] Add a versioned HTTPS `install.sh` supporting platform detection, checksum
       verification, explicit install location, and non-interactive operation.
 - [x] Add PowerShell installation for Windows with equivalent verification.
-- [ ] Add Homebrew formula generation and document package-manager installation.
+- [x] Add Homebrew formula generation and document package-manager installation.
 - [ ] Add release dry-run, installer smoke tests, clean-machine tests, and rollback
       documentation.
 - [ ] Complete user, protocol, self-hosting, operations, release, troubleshooting,

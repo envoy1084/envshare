@@ -62,6 +62,31 @@ download without making changes with `-DryRun`:
 The PowerShell installer requires TLS 1.2 or newer and does not modify the user or
 system `PATH`.
 
+## Homebrew
+
+Each release includes a cargo-dist-generated `envshare.rb` formula for the macOS
+and Linux targets. Install the pinned formula asset after reviewing it:
+
+```console
+version=0.1.0-alpha.1
+curl --proto '=https' --tlsv1.2 -LsSf \
+  "https://github.com/envshare/envshare/releases/download/v$version/envshare.rb" \
+  -o envshare.rb
+brew install --formula ./envshare.rb
+rm envshare.rb
+```
+
+This local-formula flow is the supported Homebrew route for the alpha release.
+The project does not yet claim a hosted `envshare/homebrew-tap`; once that
+repository and its release credential exist, dist can publish the same generated
+formula to it without changing archive names.
+
+To remove the formula-managed installation:
+
+```console
+brew uninstall envshare
+```
+
 ## Verification
 
 Both installers download the target archive and its cargo-dist SHA-256 file over
