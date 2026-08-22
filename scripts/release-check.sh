@@ -102,14 +102,21 @@ if jq -e '[.releases[] | select(.app_name == "node") | .artifacts[]] | any(test(
 fi
 
 dist build --tag "v$client_version" --artifacts=lies --output-format=json >/dev/null
-shellcheck -s sh install.sh scripts/test-install.sh scripts/release-check.sh
+shellcheck -s sh \
+    install.sh \
+    scripts/qualify-published-transfer.sh \
+    scripts/test-install.sh \
+    scripts/release-check.sh
 yq eval '.' .github/workflows/ci.yml >/dev/null
 yq eval '.' .github/workflows/release.yml >/dev/null
 yq eval '.' .github/workflows/container-release.yml >/dev/null
+yq eval '.' .github/workflows/release-qualification.yml >/dev/null
 
 if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoLogo -NoProfile -Command \
         '[scriptblock]::Create((Get-Content -Raw install.ps1)) | Out-Null; [scriptblock]::Create((Get-Content -Raw scripts/test-install.ps1)) | Out-Null'
+    pwsh -NoLogo -NoProfile -Command \
+        '[scriptblock]::Create((Get-Content -Raw scripts/qualify-published-transfer.ps1)) | Out-Null'
 fi
 
 printf 'release dry-run passed for v%s\n' "$client_version"
