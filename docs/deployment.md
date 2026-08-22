@@ -56,8 +56,10 @@ cosign verify ghcr.io/envoy1084/envshare-node:0.1.1 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-Pin the resolved `sha256:` image index digest in production instead of a mutable
-tag. The branch identity in the verification expression is needed only for a
+The `v0.1.1` image index digest is
+`sha256:7a979d3b84d0f047ccba4c338ddb93b68227968242de66dd48f643891fc00801`.
+Pin that immutable `sha256:` digest instead of the mutable tag. The branch
+identity in the verification expression is needed only for a
 maintainer-dispatched publication of an existing release tag.
 
 From the repository root:

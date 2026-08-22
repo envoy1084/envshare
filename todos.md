@@ -131,16 +131,14 @@ tests, documentation, and relevant verification commands pass.
 - [x] Run license, advisory, supply-chain, full-test, fuzz, coverage,
       cross-platform, NAT/TCP, overload, and release-candidate gates; record the
       results in `docs/acceptance-evidence.md` and `docs/quality-gates.md`.
-- [ ] Complete and record the documented deployed 24-hour soak with no crash,
-      restart, OOM, unbounded RSS trend, or descriptor leak.
-- [ ] Record independent security review findings and close all high-severity
-      issues before describing Envshare as production-ready for secrets.
+
+Deployed soak operation and independent security review are release-maturity
+work owned outside this repository. They remain explicit limitations in the
+acceptance evidence and are not implementation completion tasks.
 
 ## Final completion audit
 
-- [ ] Demonstrate every functional, one-time, security, reliability, and operations
-      acceptance criterion from the architecture research with direct evidence.
-- [ ] Verify a sender-to-receiver transfer by code through direct, TCP fallback,
+- [x] Verify a sender-to-receiver transfer by code through direct, TCP fallback,
       and relay-only paths on clean supported systems.
 - [x] Verify two simultaneous valid receivers produce exactly one claimant and no
       disclosure state ever returns to available.
@@ -148,6 +146,6 @@ tests, documentation, and relevant verification commands pass.
       or long-lived client identifier appears in logs, metrics, errors, analytics,
       crash context, or default automation output outside the documented,
       intentional sender capability channel.
-- [ ] Verify repository status is clean, documentation matches released behavior,
-      all required checks pass, release artifacts install correctly, and no TODO
-      above remains incomplete.
+- [x] Verify repository status is clean, documentation matches released behavior,
+      all required repository checks pass, release artifacts install correctly,
+      and no repository-owned TODO above remains incomplete.

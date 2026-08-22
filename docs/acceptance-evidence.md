@@ -8,8 +8,8 @@ but the criterion requires an independent reviewer or deployed infrastructure an
 is not claimed complete.
 
 The current qualification code commit is
-`502885f3bb5e3568065dc6584a29e8607aeefd4a`. The released `v0.1.0` commit is
-`69d312326dc5af398164f280ca5eaa3beac074b2`.
+`d2da708bde2c6a256ce4ba8aefc6509259bc385b`. The released `v0.1.1` commit is
+`d735c652148c2b7c9c85b12b414e2babac5f4c77`.
 
 ## Functional
 
@@ -17,9 +17,9 @@ The current qualification code commit is
 |---|---|---|
 | Sender creates a reachable share with one command | Verified | `direct_send_and_receive_preserve_exact_private_payload` in [`crates/cli/tests/commands.rs`](../crates/cli/tests/commands.rs) starts `envshare send` and completes the transfer. |
 | Receiver needs only the code and selected network | Verified | `federated_transfer_survives_two_of_three_nodes_unavailable` receives without peer or route arguments. |
-| Direct QUIC works | Verified | `quic_transfers_a_bounded_message` in [`crates/network/tests/direct.rs`](../crates/network/tests/direct.rs). |
-| TCP fallback works | Verified | `tcp_noise_yamux_transfers_a_bounded_message` plus the isolated UDP-blocked NAT gate in [`scripts/test-nat.sh`](../scripts/test-nat.sh). |
-| Relay-only transfer works | Verified | `relay_only_profile_transfers_without_a_direct_listener` and `relay_reservation_carries_a_transfer_request`. |
+| Direct QUIC works | Verified | `quic_transfers_a_bounded_message` in [`crates/network/tests/direct.rs`](../crates/network/tests/direct.rs), plus the published-artifact [release qualification](https://github.com/envoy1084/envshare/actions/runs/32574706429). |
+| TCP fallback works | Verified | `tcp_noise_yamux_transfers_a_bounded_message`, the isolated UDP-blocked NAT gate in [`scripts/test-nat.sh`](../scripts/test-nat.sh), and the published-artifact release qualification. |
+| Relay-only transfer works | Verified | `relay_only_profile_transfers_without_a_direct_listener`, `relay_reservation_carries_a_transfer_request`, and the published Linux client/node release qualification. |
 | Three-node discovery works with two nodes unavailable | Verified | `federated_transfer_survives_two_of_three_nodes_unavailable` configures one live and two unavailable discovery nodes. |
 | `run` injects variables without writing a file | Verified | `direct_run_overrides_environment_and_propagates_exit_status`. |
 | Selected-key sending works and reports normalization | Verified | `selected_key_send_reports_and_delivers_normalized_payload`; human and JSON contracts are documented in the [user guide](user-guide.md). |
@@ -67,7 +67,7 @@ The current qualification code commit is
 | Capacity and availability alerts are active | External | Versioned Prometheus rules and a dashboard exist under [`deploy/monitoring`](../deploy/monitoring), but alert routing must be activated and exercised by an operator in staging. |
 | Identity backup and restore is tested | External | Stable identity round-trip tests and a restore procedure exist; an isolated deployed-host restore record is still required. |
 | Docker and systemd deployment docs are tested from a clean VPS | External | Hardened assets and validation commands exist, but no clean public VPS qualification record is attached. |
-| Release binaries and images are signed | Verified | Every `v0.1.0` binary/archive/installer has a GitHub artifact attestation. The public `ghcr.io/envoy1084/envshare-node:0.1.0` image index is keylessly signed and has GitHub provenance; both records verify against digest `sha256:98c113145d657bfc46b045ecf19c85cb9d85baeae438491a02c91f3b27f120cd`. |
+| Release binaries and images are signed | Verified | All 31 `v0.1.1` release assets have GitHub attestations constrained to the release workflow. The public `ghcr.io/envoy1084/envshare-node:0.1.1` index is keylessly signed and has GitHub provenance; both verify against digest `sha256:7a979d3b84d0f047ccba4c338ddb93b68227968242de66dd48f643891fc00801`. |
 | Incident owner and vulnerability path are published | Verified | [`SECURITY.md`](../SECURITY.md) and the [incident runbook](operations.md). |
 
 ## Qualification record
@@ -80,14 +80,15 @@ The current qualification code commit is
 | Fuzz | Capability, transcript, CBOR, and frame targets each ran 60 seconds with `cargo-fuzz 0.13.2` and no crash or sanitizer finding. |
 | NAT/TCP | Privileged isolated Linux namespace gate passed with UDP blocked, TCP DNAT/SNAT, and 25 ms latency, as recorded in [quality gates](quality-gates.md). |
 | Overload | macOS and constrained Linux relay/discovery smoke runs passed with bounded acceptance and cleanup, as recorded in [load testing](load-testing.md). |
-| Cross-platform | The focused Linux/macOS/Windows [CI run](https://github.com/envoy1084/envshare/actions/runs/32568722371) passed for the released commit. |
-| Distribution | The [release workflow](https://github.com/envoy1084/envshare/actions/runs/32568975384) passed and published the [`v0.1.0` release](https://github.com/envoy1084/envshare/releases/tag/v0.1.0). A hosted macOS install returned `envshare 0.1.0`; archive checksums and GitHub attestations verified. The [container workflow](https://github.com/envoy1084/envshare/actions/runs/32570431221) published the signed index for `linux/amd64` and `linux/arm64`; both hosted images returned `envshare-node 0.1.0`, both SPDX 2.3 SBOMs were readable, and GitHub provenance plus the Cosign transparency-log signature verified against the immutable index digest. |
-| Release dry-run | `scripts/release-check.sh` passed on the current qualification commit. |
-| Soak and external review | Not complete; these remain explicit release-maturity blockers. |
+| Cross-platform | The focused Linux/macOS/Windows [CI run](https://github.com/envoy1084/envshare/actions/runs/32575145826) passed, including the hosted Windows private-output ACL regression and clean installer smokes. |
+| Published transfer | The [release qualification](https://github.com/envoy1084/envshare/actions/runs/32574706429) installed `v0.1.1` from GitHub and passed exact-payload QUIC/TCP transfers on Linux, macOS, and Windows plus relay-only on Linux. Linux Arm64 and x86-64 containers passed the same published relay test; the Intel macOS binary passed QUIC/TCP under Rosetta. |
+| Distribution | The [release workflow](https://github.com/envoy1084/envshare/actions/runs/32574138079) published the [`v0.1.1` release](https://github.com/envoy1084/envshare/releases/tag/v0.1.1) with 31 assets. All archive checksums matched and every asset attestation verified against the release workflow. The [container workflow](https://github.com/envoy1084/envshare/actions/runs/32574138071) published the signed `linux/amd64` and `linux/arm64` index; both images returned `envshare-node 0.1.1`, both SPDX 2.3 SBOMs contained 89 packages, and GitHub provenance plus the Cosign transparency-log signature verified against the immutable digest. |
+| Release dry-run | `scripts/release-check.sh` passed from a clean tree at the current qualification commit and validates both published-transfer harnesses. |
+| External maturity | Deployed soak operation and independent review are not repository implementation tasks. They remain explicit prerequisites for a future production-secret approval. |
 
 ## Release classification
 
-`v0.1.0` is a public initial release whose implemented behavior and automated
-qualification are working. It is not a production-secret approval. That label
-requires the external criteria above, especially independent review and the
-documented deployed 24-hour soak.
+`v0.1.1` is the recommended public initial release. Its implemented behavior,
+published installers, transfer paths, and signed artifacts are qualified. It is
+not a production-secret approval; that label still requires the external criteria
+above, especially independent review and a deployed soak.
