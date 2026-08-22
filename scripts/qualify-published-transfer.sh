@@ -57,6 +57,15 @@ value_after() {
     sed -n "s/^$2//p" "$1" | head -n 1
 }
 
+report_safe_errors() {
+    for error_log in "$@"; do
+        if [ -s "$error_log" ]; then
+            printf '%s\n' "--- $(basename "$error_log")" >&2
+            sed -n '1,80p' "$error_log" >&2
+        fi
+    done
+}
+
 install_client() {
     if [ -n "${ENVSHARE_BIN:-}" ]; then
         client_bin=$ENVSHARE_BIN
@@ -88,9 +97,13 @@ run_direct_case() {
     address=$(value_after "$sender_log" "Direct address: ")
     test -n "$code" && test -n "$peer" && test -n "$address"
 
-    "$client_bin" receive --code "$code" --peer "$peer" --address "$address" \
+    receiver_error="$work_root/$transport.receiver.err"
+    if ! "$client_bin" receive --code "$code" --peer "$peer" --address "$address" \
         --output "$output" > "$work_root/$transport.receiver.log" \
-        2> "$work_root/$transport.receiver.err"
+        2> "$receiver_error"; then
+        report_safe_errors "$receiver_error" "$sender_error"
+        return 1
+    fi
     cmp "$input" "$output"
     wait "$sender_pid"
     sender_pid=
@@ -161,9 +174,14 @@ run_relay_case() {
     wait_for_text "$sender_log" "Relay address: " "$sender_pid"
     code=$(value_after "$sender_log" "Share code: ")
     test -n "$code"
-    "$client_bin" --config "$client_config" receive --code "$code" --relay-only \
+    receiver_error="$work_root/relay.receiver.err"
+    if ! "$client_bin" --config "$client_config" receive --code "$code" --relay-only \
         --output "$output" > "$work_root/relay.receiver.log" \
-        2> "$work_root/relay.receiver.err"
+        2> "$receiver_error"; then
+        report_safe_errors \
+            "$receiver_error" "$work_root/relay.sender.err" "$work_root/node.err"
+        return 1
+    fi
     cmp "$input" "$output"
     wait "$sender_pid"
     sender_pid=
