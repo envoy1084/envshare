@@ -24,6 +24,9 @@ pub enum CoreError {
     /// Receiver output could not be safely completed.
     #[error("output operation failed")]
     Output,
+    /// A requested child process could not be started or supervised.
+    #[error("child process operation failed")]
+    ChildProcess,
     /// Local configuration was invalid.
     #[error("configuration is invalid")]
     Configuration,

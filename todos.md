@@ -50,9 +50,9 @@ tests, documentation, and relevant verification commands pass.
 - [x] Implement a bounded command/event API around the single-owner network loop,
       cancellation, timeouts, backpressure, and graceful shutdown.
 - [x] Implement direct sender and receiver flows using explicit multiaddresses.
-- [ ] Implement bounded input reading, raw dotenv preservation, selected-key
+- [x] Implement bounded input reading, raw dotenv preservation, selected-key
       normalization, metadata validation, and secret-safe diagnostics.
-- [ ] Implement atomic private file output on Unix and Windows, no-clobber by
+- [x] Implement atomic private file output on Unix and Windows, no-clobber by
       default, explicit replacement, symlink/reparse-point defenses, and cleanup.
 - [ ] Implement direct child execution with received variables, overlay/override/
       clean modes, signal forwarding, and correct exit-status propagation.
