@@ -16,7 +16,9 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     DiscoveredPeer, DiscoveryNamespace, DiscoveryProvider, NetworkConfig, NetworkError,
+    PrivacyMode,
     behaviour::{Behaviour, BehaviourEvent},
+    lan::{LanDiscovery, LanEvent},
 };
 
 /// Opaque token for replying to one inbound transfer request.
@@ -317,6 +319,7 @@ pub struct NetworkDriver {
     inbound_protocol_ids: HashMap<request_response::InboundRequestId, InboundRequestId>,
     next_inbound_id: u64,
     max_discovery_results: usize,
+    lan: Option<LanDiscovery>,
 }
 
 impl NetworkDriver {
@@ -355,6 +358,14 @@ impl NetworkDriver {
             })
             .build();
         let local_peer_id = *swarm.local_peer_id();
+        let lan = if config.enable_mdns && config.privacy_mode != PrivacyMode::RelayOnly {
+            Some(LanDiscovery::new(
+                local_peer_id,
+                config.max_discovery_results,
+            )?)
+        } else {
+            None
+        };
         let (command_sender, commands) = mpsc::channel(command_capacity);
         let (events, event_receiver) = mpsc::channel(event_capacity);
         let client = NetworkClient {
@@ -373,6 +384,7 @@ impl NetworkDriver {
                 inbound_protocol_ids: HashMap::new(),
                 next_inbound_id: 1,
                 max_discovery_results: config.max_discovery_results,
+                lan,
             },
         ))
     }
@@ -388,6 +400,11 @@ impl NetworkDriver {
                     self.handle_command(command);
                 }
                 event = self.swarm.select_next_some() => self.handle_swarm_event(event),
+                event = next_lan_event(self.lan.as_ref()) => {
+                    if let Some(event) = event {
+                        self.handle_lan_event(event);
+                    }
+                }
             }
         }
         self.outbound.clear();
@@ -523,8 +540,10 @@ impl NetworkDriver {
             SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(event)) => {
                 self.handle_rendezvous_event(event);
             }
-            SwarmEvent::Behaviour(BehaviourEvent::Mdns(event)) => self.handle_mdns_event(event),
             SwarmEvent::NewListenAddr { address, .. } => {
+                if let Some(lan) = &self.lan {
+                    let _ = lan.advertise(&address);
+                }
                 let _ = self.events.try_send(NetworkEvent::Listening { address });
             }
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
@@ -642,26 +661,15 @@ impl NetworkDriver {
         let _ = self.events.try_send(event);
     }
 
-    fn handle_mdns_event(&mut self, event: libp2p::mdns::Event) {
+    fn handle_lan_event(&mut self, event: LanEvent) {
         match event {
-            libp2p::mdns::Event::Discovered(records) => {
-                let mut peers = Vec::<DiscoveredPeer>::new();
-                for (peer, address) in records.into_iter().take(self.max_discovery_results) {
-                    if let Some(discovered) = peers.iter_mut().find(|item| item.peer == peer) {
-                        discovered.addresses.push(address);
-                    } else {
-                        peers.push(DiscoveredPeer {
-                            peer,
-                            addresses: vec![address],
-                        });
-                    }
-                }
-                let _ = self.events.try_send(NetworkEvent::LanDiscovered { peers });
+            LanEvent::Discovered(peer) => {
+                let _ = self
+                    .events
+                    .try_send(NetworkEvent::LanDiscovered { peers: vec![peer] });
             }
-            libp2p::mdns::Event::Expired(records) => {
-                for (peer, _) in records.into_iter().take(self.max_discovery_results) {
-                    let _ = self.events.try_send(NetworkEvent::LanExpired { peer });
-                }
+            LanEvent::Expired(peer) => {
+                let _ = self.events.try_send(NetworkEvent::LanExpired { peer });
             }
         }
     }
@@ -696,6 +704,13 @@ impl NetworkDriver {
                 .transfer
                 .send_response(channel, response);
         }
+    }
+}
+
+async fn next_lan_event(lan: Option<&LanDiscovery>) -> Option<LanEvent> {
+    match lan {
+        Some(lan) => lan.next().await,
+        None => futures::future::pending().await,
     }
 }
 

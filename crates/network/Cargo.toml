@@ -16,6 +16,7 @@ publish = false
 async-trait.workspace = true
 futures.workspace = true
 libp2p.workspace = true
+mdns-sd.workspace = true
 protocol.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

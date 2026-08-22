@@ -4,11 +4,10 @@ use std::time::Duration;
 
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::{
-    dcutr, identify, mdns, memory_connection_limits, ping, relay, rendezvous, request_response,
-    swarm::behaviour::toggle::Toggle,
+    dcutr, identify, memory_connection_limits, ping, relay, rendezvous, request_response,
 };
 
-use crate::{NetworkConfig, PrivacyMode, codec::TransferCodec, codec::transfer_protocol};
+use crate::{NetworkConfig, codec::TransferCodec, codec::transfer_protocol};
 
 #[derive(NetworkBehaviour)]
 pub(crate) struct Behaviour {
@@ -16,7 +15,6 @@ pub(crate) struct Behaviour {
     relay: relay::client::Behaviour,
     dcutr: dcutr::Behaviour,
     pub(crate) rendezvous: rendezvous::client::Behaviour,
-    mdns: Toggle<mdns::tokio::Behaviour>,
     identify: identify::Behaviour,
     ping: ping::Behaviour,
     connection_limits: libp2p::connection_limits::Behaviour,
@@ -45,17 +43,11 @@ impl Behaviour {
             .with_max_pending_outgoing(Some(config.max_established_connections))
             .with_max_established(Some(config.max_established_connections))
             .with_max_established_per_peer(Some(config.max_connections_per_peer));
-        let mdns = if config.enable_mdns && config.privacy_mode != PrivacyMode::RelayOnly {
-            mdns::tokio::Behaviour::new(mdns::Config::default(), keypair.public().to_peer_id()).ok()
-        } else {
-            None
-        };
         Self {
             transfer,
             relay,
             dcutr: dcutr::Behaviour::new(keypair.public().to_peer_id()),
             rendezvous: rendezvous::client::Behaviour::new(keypair.clone()),
-            mdns: Toggle::from(mdns),
             identify: identify::Behaviour::new(identify_config),
             ping: ping::Behaviour::default(),
             connection_limits: libp2p::connection_limits::Behaviour::new(limits),

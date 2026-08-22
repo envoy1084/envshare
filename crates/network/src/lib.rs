@@ -8,6 +8,7 @@ mod config;
 mod discovery;
 mod driver;
 mod error;
+mod lan;
 
 pub use config::NetworkConfig;
 pub use discovery::{
