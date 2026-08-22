@@ -26,11 +26,11 @@ tests, documentation, and relevant verification commands pass.
 
 - [x] Implement the versioned 160-bit Crockford Base32 capability format with a
       checksum, aliases, redacted secret types, and zeroization.
-- [ ] Implement domain-separated HKDF derivation for room, authentication, and
+- [x] Implement domain-separated HKDF derivation for room, authentication, and
       session material with deterministic golden vectors.
-- [ ] Implement bounded canonical transcript construction and HMAC proofs binding
+- [x] Implement bounded canonical transcript construction and HMAC proofs binding
       network, room, version, peer identities, nonces, claim, and ciphertext.
-- [ ] Implement XChaCha20-Poly1305 envelope encryption/decryption and digest
+- [x] Implement XChaCha20-Poly1305 envelope encryption/decryption and digest
       verification with secret-safe errors.
 - [ ] Implement bounded CBOR Open, Offer, Acknowledge, Completed, and protocol
       error messages with four-byte framing and rejection before allocation.
