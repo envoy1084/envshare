@@ -5,7 +5,7 @@ Versioning while the public interfaces remain experimental during `0.x`.
 
 ## [Unreleased]
 
-## [0.1.0-alpha.1] - 2026-08-22
+## [0.1.0] - 2026-08-22
 
 ### Added
 
@@ -19,5 +19,12 @@ Versioning while the public interfaces remain experimental during `0.x`.
 - Bounded health, metrics, logging, tracing, load-testing, deployment, and
   incident-response tooling.
 
-[Unreleased]: https://github.com/envshare/envshare/compare/v0.1.0-alpha.1...HEAD
-[0.1.0-alpha.1]: https://github.com/envshare/envshare/releases/tag/v0.1.0-alpha.1
+### Security status
+
+- This initial 0.x release has extensive automated and local qualification but
+  has not completed independent security review or the documented 24-hour
+  production-node soak. It is not described as production-ready for high-value
+  secrets.
+
+[Unreleased]: https://github.com/envoy1084/envshare/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/envoy1084/envshare/releases/tag/v0.1.0

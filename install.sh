@@ -3,8 +3,8 @@
 
 set -eu
 
-INSTALLER_VERSION="0.1.0-alpha.1"
-REPOSITORY="envshare/envshare"
+INSTALLER_VERSION="0.1.0"
+REPOSITORY="envoy1084/envshare"
 
 usage() {
     cat <<'EOF'

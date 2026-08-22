@@ -1,6 +1,6 @@
 [Unit]
 Description=Envshare libp2p discovery and relay node
-Documentation=https://github.com/envshare/envshare/blob/main/docs/deployment.md
+Documentation=https://github.com/envoy1084/envshare/blob/main/docs/deployment.md
 Wants=network-online.target
 After=network-online.target
 StartLimitIntervalSec=60

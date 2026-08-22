@@ -23,7 +23,7 @@ targets. All project source and release metadata use Apache-2.0 only.
    archives, SHA-256 files, CycloneDX SBOMs, shell and PowerShell installers,
    Homebrew formula, source archive, and no node archives for macOS or Windows.
 6. Create one annotated, signed tag matching the workspace version exactly, for
-   example `v0.1.0-alpha.1`, and push only that tag after approval.
+   example `v0.1.0`, and push only that tag after approval.
 
 The generated release workflow refuses partial publication: all target builds
 must succeed before its host job creates a release. It embeds auditable dependency
@@ -64,7 +64,7 @@ Before announcing a release:
 4. Run `envshare --version`, `envshare --help`, and a direct/TCP/relay acceptance
    transfer on the installed binaries. Exercise `envshare-node config check`,
    liveness, readiness, and graceful shutdown on each Linux node archive.
-5. Confirm release notes still identify the alpha security boundary and do not
+5. Confirm release notes still identify the unaudited 0.x security boundary and do not
    describe the project as production-ready for secrets before independent review.
 
 ## Rollback and withdrawal

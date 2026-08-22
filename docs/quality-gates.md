@@ -40,7 +40,7 @@ for rerunning them on the final candidate or for the external security review.
 | 2026-08-22 | same, cargo-audit 0.22.2, cargo-deny 0.19.9 | advisory, license, source, and ban policies passed; Rendezvous resolved to 0.17.1 |
 | 2026-08-22 | privileged Debian Bookworm arm64 container on Linux 7.0.14 OrbStack | namespace NAT gate passed with UDP blocked, TCP DNAT/SNAT, and 25 ms latency |
 | 2026-08-22 | macOS arm64 and constrained Linux arm64 container | overload smoke results passed as recorded in [load testing](load-testing.md) |
-| 2026-08-22 | macOS arm64, cargo-dist 0.32.0 | clean-tree release plan and artifact-lie validation passed for `v0.1.0-alpha.1` |
+| 2026-08-22 | macOS arm64, cargo-dist 0.32.0 | clean-tree release plan and artifact-lie validation passed for the initial release configuration |
 
 Cross-platform hosted checks, a 24-hour qualification soak, clean published-asset
 installation, and external security review are deliberately not claimed by this

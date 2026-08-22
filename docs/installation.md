@@ -23,7 +23,7 @@ Run the installer directly from the versioned HTTPS release:
 
 ```console
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/envshare/envshare/releases/download/v0.1.0-alpha.1/install.sh | sh
+  https://github.com/envoy1084/envshare/releases/download/v0.1.0/install.sh | sh
 ```
 
 The default destination is `$HOME/.local/bin/envshare`. Select an absolute
@@ -31,8 +31,8 @@ destination without a prompt:
 
 ```console
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/envshare/envshare/releases/download/v0.1.0-alpha.1/install.sh |
-  sh -s -- --version 0.1.0-alpha.1 --install-dir "$HOME/bin"
+  https://github.com/envoy1084/envshare/releases/download/v0.1.0/install.sh |
+  sh -s -- --version 0.1.0 --install-dir "$HOME/bin"
 ```
 
 Pass `--force` only when intentionally replacing that path. `--dry-run` performs
@@ -45,8 +45,8 @@ shell profile, or collect telemetry.
 Download and invoke the version-pinned installer:
 
 ```powershell
-$version = "0.1.0-alpha.1"
-$script = Invoke-RestMethod "https://github.com/envshare/envshare/releases/download/v$version/install.ps1"
+$version = "0.1.0"
+$script = Invoke-RestMethod "https://github.com/envoy1084/envshare/releases/download/v$version/install.ps1"
 & ([scriptblock]::Create($script)) -Version $version
 ```
 
@@ -68,15 +68,15 @@ Each release includes a cargo-dist-generated `envshare.rb` formula for the macOS
 and Linux targets. Install the pinned formula asset after reviewing it:
 
 ```console
-version=0.1.0-alpha.1
+version=0.1.0
 curl --proto '=https' --tlsv1.2 -LsSf \
-  "https://github.com/envshare/envshare/releases/download/v$version/envshare.rb" \
+  "https://github.com/envoy1084/envshare/releases/download/v$version/envshare.rb" \
   -o envshare.rb
 brew install --formula ./envshare.rb
 rm envshare.rb
 ```
 
-This local-formula flow is the supported Homebrew route for the alpha release.
+This local-formula flow is the supported Homebrew route for the initial release.
 The project does not yet claim a hosted `envshare/homebrew-tap`; once that
 repository and its release credential exist, dist can publish the same generated
 formula to it without changing archive names.
@@ -100,8 +100,8 @@ running it:
 
 ```console
 gh attestation verify install.sh \
-  --repo envshare/envshare \
-  --signer-workflow envshare/envshare/.github/workflows/release.yml
+  --repo envoy1084/envshare \
+  --signer-workflow envoy1084/envshare/.github/workflows/release.yml
 ```
 
 After installation, make sure the chosen directory is on `PATH`, then run:

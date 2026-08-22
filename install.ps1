@@ -2,7 +2,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$Version = $(if ($env:ENVSHARE_VERSION) { $env:ENVSHARE_VERSION } else { "0.1.0-alpha.1" }),
+    [string]$Version = $(if ($env:ENVSHARE_VERSION) { $env:ENVSHARE_VERSION } else { "0.1.0" }),
     [string]$InstallDir = $(if ($env:ENVSHARE_INSTALL_DIR) { $env:ENVSHARE_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\Envshare\bin" }),
     [switch]$Force,
     [switch]$DryRun
@@ -10,7 +10,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
-$Repository = "envshare/envshare"
+$Repository = "envoy1084/envshare"
 
 function Stop-Install([string]$Message) {
     throw "envshare installer: $Message"

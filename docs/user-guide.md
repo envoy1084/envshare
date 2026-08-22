@@ -5,7 +5,8 @@ receiver. The sender owns the lifetime and remains online until the first valid
 receiver irreversibly claims the share. Public nodes help peers discover and
 relay each other, but they do not receive the capability or plaintext payload.
 
-This release is an alpha and must not yet be used for production secrets. Read
+This initial 0.x release has not completed independent security review and must
+not yet be used for production secrets. Read
 the [threat model](threat-model.md) before evaluating it with test credentials.
 
 ## Before a transfer
@@ -106,4 +107,3 @@ If a receiver reports delivery-unknown after writing locally, inspect that chose
 destination; do not retry the same capability to a second destination. An expired,
 claimed, malformed, wrong-network, or unauthorized capability intentionally yields
 little diagnostic detail.
-

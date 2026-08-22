@@ -25,7 +25,7 @@ does not provide anonymity.
 Install a versioned release on Linux or macOS:
 
 ```console
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/envshare/envshare/releases/download/v0.1.0-alpha.1/install.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/envoy1084/envshare/releases/download/v0.1.0/install.sh | sh
 ```
 
 Windows PowerShell and explicit-location commands are documented in the

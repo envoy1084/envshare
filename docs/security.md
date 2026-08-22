@@ -1,7 +1,7 @@
 # Security guide
 
 Envshare is designed to reduce the exposure of a short-lived, one-time dotenv
-handoff. This alpha has not completed independent security review and is not yet
+handoff. This initial 0.x release has not completed independent security review and is not
 approved for production secrets. The [threat model](threat-model.md) is the
 authoritative statement of protected assets, adversaries, and exclusions.
 
@@ -74,4 +74,3 @@ Production-ready claims require the final acceptance gates, independent security
 review, closure of all high-severity findings, and evidence on every supported
 release target. Passing unit tests or using standard cryptographic primitives is
 not a substitute for that review.
-
