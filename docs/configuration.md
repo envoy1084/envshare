@@ -32,7 +32,10 @@ relays = [
 
 Manage profiles with `envshare network list|show|add|remove|use`. `network add`
 accepts a file containing one profile body (the fields below `[networks.NAME]`
-in the example). Config writes are atomic and owner-private.
+in the example). Rendezvous and relay endpoints are independent federated sets.
+When `require_relay = true`, at least one relay must be configured and senders
+must establish a reservation before printing the capability. Config writes are
+atomic and owner-private.
 
 Generate installation assets without checking in stale generated copies:
 

@@ -1,6 +1,11 @@
 //! Shared direct receiver and network helpers.
 
-use std::{io::IsTerminal as _, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    io::IsTerminal as _,
+    str::FromStr,
+    time::Duration,
+};
 
 use app_core::{CoreError, DirectReceiver, PendingDirectOffer, ReceiverSession, read_bounded};
 use code::ShareCode;
@@ -16,16 +21,102 @@ use zeroize::Zeroizing;
 use crate::{CliFailure, ExitCode, args::ConnectionArgs};
 
 pub(crate) struct RunningNetwork {
-    pub cancellation: CancellationToken,
-    pub task: JoinHandle<()>,
+    cancellation: CancellationToken,
+    task: Option<JoinHandle<()>>,
+}
+
+pub(crate) async fn reserve_relays(
+    client: &network::NetworkClient,
+    events: &mut tokio::sync::mpsc::Receiver<NetworkEvent>,
+    relays: &[network::DiscoveryNode],
+) -> Vec<(PeerId, network::Multiaddr)> {
+    let mut pending = HashSet::new();
+    for relay in relays {
+        let mut address = relay.address.clone();
+        address.push(network::MultiaddrProtocol::P2p(relay.peer));
+        address.push(network::MultiaddrProtocol::P2pCircuit);
+        if client.listen(address).await.is_ok() {
+            pending.insert(relay.peer);
+        }
+    }
+    let mut reservations = HashSet::new();
+    let mut listeners = HashMap::new();
+    let _ = tokio::time::timeout(Duration::from_secs(10), async {
+        while listeners
+            .keys()
+            .filter(|peer| reservations.contains(*peer))
+            .count()
+            < pending.len()
+        {
+            match events.recv().await {
+                Some(NetworkEvent::RelayReservation { relay_peer, .. })
+                    if pending.contains(&relay_peer) =>
+                {
+                    reservations.insert(relay_peer);
+                }
+                Some(NetworkEvent::Listening { address }) => {
+                    if let Some(relay_peer) = relay_peer_from_circuit(&address)
+                        && pending.contains(&relay_peer)
+                    {
+                        listeners.insert(relay_peer, address);
+                    }
+                }
+                Some(_) => {}
+                None => break,
+            }
+        }
+    })
+    .await;
+    relays
+        .iter()
+        .filter(|relay| reservations.contains(&relay.peer))
+        .filter_map(|relay| {
+            listeners
+                .remove(&relay.peer)
+                .map(|address| (relay.peer, address))
+        })
+        .collect()
+}
+
+fn relay_peer_from_circuit(address: &network::Multiaddr) -> Option<PeerId> {
+    let mut preceding_peer = None;
+    for protocol in address {
+        match protocol {
+            network::MultiaddrProtocol::P2p(peer) => preceding_peer = Some(peer),
+            network::MultiaddrProtocol::P2pCircuit => return preceding_peer,
+            _ => {}
+        }
+    }
+    None
 }
 
 impl RunningNetwork {
-    pub async fn stop(self) -> Result<(), CliFailure> {
+    pub fn new(cancellation: CancellationToken, task: JoinHandle<()>) -> Self {
+        Self {
+            cancellation,
+            task: Some(task),
+        }
+    }
+
+    pub async fn stop(mut self) -> Result<(), CliFailure> {
         self.cancellation.cancel();
-        self.task
-            .await
+        let Some(task) = self.task.take() else {
+            return Err(CliFailure::new(
+                ExitCode::Internal,
+                "network task is missing",
+            ));
+        };
+        task.await
             .map_err(|_| CliFailure::new(ExitCode::Internal, "network task failed"))
+    }
+}
+
+impl Drop for RunningNetwork {
+    fn drop(&mut self) {
+        self.cancellation.cancel();
+        if let Some(task) = self.task.take() {
+            task.abort();
+        }
     }
 }
 
@@ -59,7 +150,7 @@ pub(crate) async fn receive_direct(
         NetworkDriver::new(keypair, &config).map_err(|_| CoreError::Network)?;
     let cancellation = CancellationToken::new();
     let task = tokio::spawn(driver.run(cancellation.clone()));
-    let network = RunningNetwork { cancellation, task };
+    let network = RunningNetwork::new(cancellation, task);
 
     if let (Some(peer), Some(address)) = (&arguments.peer, &arguments.address) {
         let sender_peer = PeerId::from_str(peer)

@@ -16,7 +16,7 @@ use zeroize::Zeroizing;
 
 use crate::{CliFailure, ExitCode, args::SendArgs};
 
-use super::shared::read_sender_input;
+use super::shared::{RunningNetwork, read_sender_input, reserve_relays};
 
 pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
     let expires = arguments.expires.ok_or_else(invalid_resolved_config)?;
@@ -36,36 +36,18 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
     let namespace = DiscoveryNamespace::from_room_id(*root.room_id().as_bytes());
     let code_text = Zeroizing::new(code.to_string());
 
-    let keypair = identity::Keypair::generate_ed25519();
-    let sender_peer = keypair.public().to_peer_id();
-    let privacy = if arguments.discovery.relay_only {
-        PrivacyMode::RelayOnly
-    } else {
-        PrivacyMode::Standard
-    };
-    let config = NetworkConfig {
-        enable_mdns: arguments.discovery.mdns,
-        privacy_mode: privacy,
-        ..NetworkConfig::default()
-    };
-    let (client, mut events, driver) =
-        NetworkDriver::new(keypair, &config).map_err(|_| CoreError::Network)?;
-    let listen: Multiaddr = arguments
-        .listen
-        .parse()
-        .map_err(|_| CoreError::Configuration)?;
-    let driver_cancel = CancellationToken::new();
-    let driver_task = tokio::spawn(driver.run(driver_cancel.clone()));
-    client
-        .listen(listen)
-        .await
-        .map_err(|_| CoreError::Network)?;
-    let advertised = wait_for_listener(&mut events).await?;
+    let ReachableNetwork {
+        client,
+        mut events,
+        running: running_network,
+        peer: sender_peer,
+        advertised,
+    } = start_reachable_network(&arguments).await?;
     let mut registration =
         establish_public_reachability(&arguments, &client, &mut events, &advertised, &namespace)
             .await?;
 
-    emit_ready(&arguments, &code_text, &sender_peer, &advertised);
+    emit_ready(&arguments, &code_text, &sender_peer, &advertised[0]);
     std::io::stdout().flush().map_err(|_| CoreError::Output)?;
     let actor = SenderActor::new(
         root,
@@ -79,22 +61,19 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
     )?;
     let service_cancel = CancellationToken::new();
     let service = DirectSender::new(client, events, actor);
-    let state = tokio::select! {
-        result = service.run(service_cancel.clone()) => result?,
+    let outcome = tokio::select! {
+        result = service.run(service_cancel.clone()) => result.map_err(Into::into),
         interrupted = tokio::signal::ctrl_c() => {
-            interrupted.map_err(|_| CoreError::Internal)?;
-            service_cancel.cancel();
-            stop_registration(registration.take()).await;
-            driver_cancel.cancel();
-            let _ = driver_task.await;
-            return Err(CliFailure::new(ExitCode::Interrupted, "interrupted"));
+            interrupted
+                .map_err(|_| CoreError::Internal)
+                .map_err(CliFailure::from)
+                .and_then(|()| Err(CliFailure::new(ExitCode::Interrupted, "interrupted")))
         }
     };
+    service_cancel.cancel();
     stop_registration(registration.take()).await;
-    driver_cancel.cancel();
-    driver_task
-        .await
-        .map_err(|_| CliFailure::new(ExitCode::Internal, "network task failed"))?;
+    running_network.stop().await?;
+    let state = outcome?;
     match state {
         SenderState::Consumed => {
             emit_event(arguments.json, "consumed");
@@ -112,6 +91,78 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
             ExitCode::Internal,
             "sender stopped unexpectedly",
         )),
+    }
+}
+
+struct ReachableNetwork {
+    client: network::NetworkClient,
+    events: tokio::sync::mpsc::Receiver<NetworkEvent>,
+    running: RunningNetwork,
+    peer: network::PeerId,
+    advertised: Vec<Multiaddr>,
+}
+
+async fn start_reachable_network(arguments: &SendArgs) -> Result<ReachableNetwork, CliFailure> {
+    let keypair = identity::Keypair::generate_ed25519();
+    let peer = keypair.public().to_peer_id();
+    let privacy = if arguments.discovery.relay_only {
+        PrivacyMode::RelayOnly
+    } else {
+        PrivacyMode::Standard
+    };
+    let config = NetworkConfig {
+        enable_mdns: arguments.discovery.mdns,
+        privacy_mode: privacy,
+        ..NetworkConfig::default()
+    };
+    let (client, mut events, driver) =
+        NetworkDriver::new(keypair, &config).map_err(|_| CoreError::Network)?;
+    let cancellation = CancellationToken::new();
+    let task = tokio::spawn(driver.run(cancellation.clone()));
+    let running = RunningNetwork::new(cancellation, task);
+    let mut advertised = Vec::new();
+    if !arguments.discovery.relay_only {
+        let listen: Multiaddr = arguments
+            .listen
+            .parse()
+            .map_err(|_| CoreError::Configuration)?;
+        client
+            .listen(listen)
+            .await
+            .map_err(|_| CoreError::Network)?;
+        advertised.push(wait_for_listener(&mut events).await?);
+    }
+    let reservations = reserve_relays(&client, &mut events, &arguments.discovery.relays).await;
+    if arguments.discovery.require_relay && reservations.is_empty() {
+        return Err(relay_failure(arguments.discovery.relays.is_empty()));
+    }
+    advertised.extend(reservations.into_iter().map(|(_, address)| address));
+    if advertised.is_empty() {
+        return Err(CliFailure::new(
+            ExitCode::Network,
+            "no direct listener or relay reservation is available",
+        ));
+    }
+    Ok(ReachableNetwork {
+        client,
+        events,
+        running,
+        peer,
+        advertised,
+    })
+}
+
+const fn relay_failure(missing: bool) -> CliFailure {
+    if missing {
+        CliFailure::new(
+            ExitCode::Configuration,
+            "relay mode requires at least one configured relay",
+        )
+    } else {
+        CliFailure::new(
+            ExitCode::Network,
+            "no configured relay accepted a reservation",
+        )
     }
 }
 
@@ -150,26 +201,18 @@ async fn establish_public_reachability(
     arguments: &SendArgs,
     client: &network::NetworkClient,
     events: &mut tokio::sync::mpsc::Receiver<NetworkEvent>,
-    advertised: &Multiaddr,
+    advertised: &[Multiaddr],
     namespace: &DiscoveryNamespace,
 ) -> Result<Option<RegistrationMaintenance>, CliFailure> {
-    if arguments.discovery.relay_only
-        && !advertised
-            .iter()
-            .any(|protocol| matches!(protocol, network::MultiaddrProtocol::P2pCircuit))
-    {
-        return Err(CliFailure::new(
-            ExitCode::Configuration,
-            "relay-only mode requires a relay circuit listen address",
-        ));
-    }
     if arguments.discovery.nodes.is_empty() {
         return Ok(None);
     }
-    client
-        .add_discovery_address(advertised.clone())
-        .await
-        .map_err(|_| CoreError::Network)?;
+    for address in advertised {
+        client
+            .add_discovery_address(address.clone())
+            .await
+            .map_err(|_| CoreError::Network)?;
+    }
     let ttl_seconds = arguments
         .expires
         .ok_or_else(invalid_resolved_config)?
@@ -278,7 +321,11 @@ fn emit_ready(arguments: &SendArgs, code: &str, peer: &network::PeerId, address:
     } else {
         println!("Share code: {code}");
         println!("Sender peer: {peer}");
-        println!("Direct address: {address}");
+        if arguments.discovery.relay_only {
+            println!("Relay address: {address}");
+        } else {
+            println!("Direct address: {address}");
+        }
     }
 }
 

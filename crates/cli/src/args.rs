@@ -138,12 +138,18 @@ pub(crate) struct SenderDiscoveryArgs {
     /// Federated Rendezvous endpoint including its trailing `/p2p/<peer-id>`.
     #[arg(long = "discovery-node", value_name = "MULTIADDR")]
     pub nodes: Vec<DiscoveryNode>,
+    /// Circuit Relay endpoint including its trailing `/p2p/<peer-id>`.
+    #[arg(long = "relay", value_name = "MULTIADDR")]
+    pub relays: Vec<DiscoveryNode>,
     /// Enable multicast DNS discovery on the local network.
     #[arg(long)]
     pub mdns: bool,
     /// Advertise and accept only Circuit Relay routes.
     #[arg(long)]
     pub relay_only: bool,
+    /// Require at least one relay reservation (set by a selected profile).
+    #[arg(skip)]
+    pub require_relay: bool,
 }
 
 #[derive(Debug, Args)]

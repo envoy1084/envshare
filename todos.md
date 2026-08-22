@@ -91,7 +91,7 @@ tests, documentation, and relevant verification commands pass.
 
 - [x] Finish the documented `send`, `receive`, `run`, `doctor`, `network`, and
       `completions` command trees and configuration precedence.
-- [ ] Implement public/direct/relay diagnostics and disposable discovery tests in
+- [x] Implement public/direct/relay diagnostics and disposable discovery tests in
       `doctor` without user-derived identifiers.
 - [x] Complete TTY detection, `NO_COLOR`, code-only mode, JSON streaming, safe
       debug behavior, exact delivery wording, and stable error/exit contracts.

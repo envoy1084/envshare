@@ -42,6 +42,12 @@ pub(crate) struct NetworkProfile {
     pub relays: Vec<String>,
 }
 
+pub(crate) struct DiagnosticProfile {
+    pub rendezvous: Vec<DiscoveryNode>,
+    pub relays: Vec<DiscoveryNode>,
+    pub require_relay: bool,
+}
+
 pub(crate) struct LoadedConfig {
     pub path: PathBuf,
     pub value: ClientConfig,
@@ -134,7 +140,15 @@ impl ClientConfig {
             &mut arguments.discovery.nodes,
             &mut arguments.discovery.mdns,
             &mut arguments.discovery.relay_only,
-        )
+        )?;
+        if let Some(profile) = self.networks.get(&network) {
+            if arguments.discovery.relays.is_empty() {
+                arguments.discovery.relays = parse_nodes(&profile.relays)?;
+            }
+            arguments.discovery.require_relay |= profile.require_relay;
+        }
+        arguments.discovery.require_relay |= arguments.discovery.relay_only;
+        Ok(())
     }
 
     pub fn apply_connection(&self, arguments: &mut ConnectionArgs) -> Result<(), CliFailure> {
@@ -158,19 +172,18 @@ impl ClientConfig {
         self.networks.get(name)
     }
 
-    pub fn diagnostic_nodes(
+    pub fn diagnostic_profile(
         &self,
         selected: Option<&str>,
-    ) -> Result<(String, Vec<DiscoveryNode>, bool), CliFailure> {
+    ) -> Result<DiagnosticProfile, CliFailure> {
         let name = selected.unwrap_or(&self.default_network);
         validate_network_id(name)?;
         let profile = self.networks.get(name).ok_or_else(invalid_config)?;
-        let nodes = profile
-            .rendezvous
-            .iter()
-            .map(|address| DiscoveryNode::from_str(address).map_err(|_| invalid_config()))
-            .collect::<Result<_, _>>()?;
-        Ok((profile.network_id.clone(), nodes, profile.require_relay))
+        Ok(DiagnosticProfile {
+            rendezvous: parse_nodes(&profile.rendezvous)?,
+            relays: parse_nodes(&profile.relays)?,
+            require_relay: profile.require_relay,
+        })
     }
 
     pub fn add_profile(
@@ -251,6 +264,9 @@ impl ClientConfig {
             if profile.rendezvous.len() > MAX_NODES || profile.relays.len() > MAX_NODES {
                 return Err(invalid_config());
             }
+            if profile.require_relay && profile.relays.is_empty() {
+                return Err(invalid_config());
+            }
             for addresses in [&profile.rendezvous, &profile.relays] {
                 let mut peers = std::collections::HashSet::new();
                 for address in addresses {
@@ -263,6 +279,13 @@ impl ClientConfig {
         }
         Ok(())
     }
+}
+
+fn parse_nodes(addresses: &[String]) -> Result<Vec<DiscoveryNode>, CliFailure> {
+    addresses
+        .iter()
+        .map(|address| DiscoveryNode::from_str(address).map_err(|_| invalid_config()))
+        .collect()
 }
 
 impl NetworkProfile {
@@ -403,5 +426,64 @@ mod tests {
         assert_eq!(arguments.network.as_deref(), Some("configured"));
         assert_eq!(arguments.expires, Some(std::time::Duration::from_mins(20)));
         Ok(())
+    }
+
+    #[test]
+    fn sender_relays_are_loaded_from_profiles_but_explicit_relays_win()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let profile_peer = network::PeerId::random();
+        let explicit_peer = network::PeerId::random();
+        let mut networks = BTreeMap::new();
+        networks.insert(
+            "configured".to_owned(),
+            NetworkProfile {
+                network_id: "configured".to_owned(),
+                require_relay: true,
+                relays: vec![format!("/ip4/127.0.0.1/tcp/4001/p2p/{profile_peer}")],
+                ..NetworkProfile::default()
+            },
+        );
+        let config = ClientConfig {
+            default_network: "configured".to_owned(),
+            networks,
+            ..ClientConfig::default()
+        };
+        let mut cli = Cli::try_parse_from([
+            "envshare",
+            "send",
+            "source.env",
+            "--relay",
+            &format!("/ip4/127.0.0.1/tcp/4002/p2p/{explicit_peer}"),
+        ])?;
+        let Command::Send(arguments) = &mut cli.command else {
+            return Err("send command expected".into());
+        };
+
+        config.apply_send(arguments)?;
+
+        assert_eq!(arguments.discovery.relays.len(), 1);
+        assert_eq!(arguments.discovery.relays[0].peer, explicit_peer);
+        assert!(arguments.discovery.require_relay);
+        Ok(())
+    }
+
+    #[test]
+    fn relay_required_profile_must_configure_a_relay() {
+        let mut networks = BTreeMap::new();
+        networks.insert(
+            "configured".to_owned(),
+            NetworkProfile {
+                network_id: "configured".to_owned(),
+                require_relay: true,
+                ..NetworkProfile::default()
+            },
+        );
+        let config = ClientConfig {
+            default_network: "configured".to_owned(),
+            networks,
+            ..ClientConfig::default()
+        };
+
+        assert!(config.validate().is_err());
     }
 }

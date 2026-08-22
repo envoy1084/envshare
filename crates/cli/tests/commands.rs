@@ -238,7 +238,14 @@ fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
     })?;
     let directory = tempfile::tempdir()?;
     let config = directory.path().join("doctor.toml");
-    let endpoint = format!("{address}/p2p/{node_peer}");
+    let port = address
+        .iter()
+        .find_map(|protocol| match protocol {
+            network::MultiaddrProtocol::Tcp(port) => Some(port),
+            _ => None,
+        })
+        .ok_or("doctor node did not listen on TCP")?;
+    let endpoint = format!("/dns4/localhost/tcp/{port}/p2p/{node_peer}");
     fs::write(
         &config,
         format!(
@@ -248,7 +255,7 @@ fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
     let result = Command::new(binary())
         .arg("--config")
         .arg(&config)
-        .args(["doctor", "--network", "diag", "--json"])
+        .args(["doctor", "--network", "diag", "--json", "--verbose"])
         .output()?;
     assert!(
         result.status.success(),
@@ -258,7 +265,78 @@ fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
     );
     let output = String::from_utf8(result.stdout)?;
     assert!(output.contains("\"event\":\"doctor_complete\""));
+    assert!(output.contains("\"direct_connectivity\":true"));
+    assert!(output.contains("\"dns_endpoints\":2"));
+    assert!(output.contains("\"relay_circuits\":1"));
+    assert!(output.contains(&node_peer.to_string()));
     assert!(!output.contains("envshare-v1-"));
+
+    cancellation.cancel();
+    runtime.block_on(task)??;
+    Ok(())
+}
+
+#[test]
+fn relay_only_profile_transfers_without_a_direct_listener() -> Result<(), Box<dyn Error>> {
+    let runtime = tokio::runtime::Runtime::new()?;
+    let node_config = local_node_config()?;
+    let (node_peer, mut events, node) =
+        NodeServer::new(network::identity::Keypair::generate_ed25519(), &node_config)?;
+    let cancellation = CancellationToken::new();
+    let task = runtime.spawn(node.run(cancellation.clone()));
+    let address = runtime.block_on(async {
+        timeout(Duration::from_secs(5), async {
+            loop {
+                if let Some(NodeEvent::Listening { address }) = events.recv().await {
+                    break Ok::<_, Box<dyn Error>>(address);
+                }
+            }
+        })
+        .await?
+    })?;
+    let directory = tempfile::tempdir()?;
+    let config = directory.path().join("relay.toml");
+    let endpoint = format!("{address}/p2p/{node_peer}");
+    fs::write(
+        &config,
+        format!(
+            "version = 1\ndefault_network = \"relay-test\"\n\n[networks.relay-test]\nnetwork_id = \"relay-test\"\nrequire_relay = true\nrendezvous = [\"{endpoint}\"]\nrelays = [\"{endpoint}\"]\n"
+        ),
+    )?;
+    let input = directory.path().join("relay.env");
+    let output = directory.path().join("relay.received.env");
+    let payload = b"RELAY_ONLY=private\n";
+    fs::write(&input, payload)?;
+    let mut sender = Command::new(binary())
+        .arg("--config")
+        .arg(&config)
+        .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .args(["--expires", "15s", "--relay-only"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let sender_stdout = sender.stdout.take().ok_or("missing sender stdout")?;
+    let mut sender_lines = BufReader::new(sender_stdout).lines();
+    let code = value_after(
+        &sender_lines.next().ok_or("missing share code")??,
+        "Share code: ",
+    )?;
+    let _sender_peer = sender_lines.next().ok_or("missing sender peer")??;
+    let relay_address = sender_lines.next().ok_or("missing relay address")??;
+    assert!(relay_address.starts_with("Relay address: "));
+
+    let receiver = Command::new(binary())
+        .arg("--config")
+        .arg(&config)
+        .args(["receive", "--code", &code, "--relay-only"])
+        .arg("--output")
+        .arg(&output)
+        .output()?;
+    if !receiver.status.success() {
+        let _ = sender.kill();
+    }
+    assert_successful_payload(&receiver, &output, payload)?;
+    assert!(sender.wait()?.success());
 
     cancellation.cancel();
     runtime.block_on(task)??;
