@@ -128,8 +128,11 @@ tests, documentation, and relevant verification commands pass.
       documentation.
 - [x] Complete user, protocol, self-hosting, operations, release, troubleshooting,
       privacy, and security documentation.
-- [ ] Run license, advisory, supply-chain, fuzz, coverage, cross-platform, NAT,
-      overload, soak, and release-candidate gates.
+- [x] Run license, advisory, supply-chain, full-test, fuzz, coverage,
+      cross-platform, NAT/TCP, overload, and release-candidate gates; record the
+      results in `docs/acceptance-evidence.md` and `docs/quality-gates.md`.
+- [ ] Complete and record the documented deployed 24-hour soak with no crash,
+      restart, OOM, unbounded RSS trend, or descriptor leak.
 - [ ] Record independent security review findings and close all high-severity
       issues before describing Envshare as production-ready for secrets.
 
@@ -139,7 +142,7 @@ tests, documentation, and relevant verification commands pass.
       acceptance criterion from the architecture research with direct evidence.
 - [ ] Verify a sender-to-receiver transfer by code through direct, TCP fallback,
       and relay-only paths on clean supported systems.
-- [ ] Verify two simultaneous valid receivers produce exactly one claimant and no
+- [x] Verify two simultaneous valid receivers produce exactly one claimant and no
       disclosure state ever returns to available.
 - [ ] Verify no payload, capability, room identifier, environment key/value, path,
       or long-lived client identifier appears in logs, metrics, errors, analytics,

@@ -37,12 +37,15 @@ for rerunning them on the final candidate or for the external security review.
 |---|---|---|
 | 2026-08-22 | macOS 26.5.2 arm64, Apple M3 Pro, Rust 1.96.0 | full all-feature workspace suite passed; 81.22% line coverage passed the 80% floor |
 | 2026-08-22 | same, nightly-2026-08-21, cargo-fuzz 0.13.2 | capability, transcript, CBOR, and frame targets each ran 20 seconds with no crash |
+| 2026-08-22 | same, post-release qualification commit `d4492b4` | full suite, Clippy, and rustdoc passed; 81.26% line coverage passed the 80% floor |
+| 2026-08-22 | same, nightly-2026-08-21, cargo-fuzz 0.13.2 | all four targets each ran the required 60 seconds with no crash or sanitizer finding |
 | 2026-08-22 | same, cargo-audit 0.22.2, cargo-deny 0.19.9 | advisory, license, source, and ban policies passed; Rendezvous resolved to 0.17.1 |
 | 2026-08-22 | privileged Debian Bookworm arm64 container on Linux 7.0.14 OrbStack | namespace NAT gate passed with UDP blocked, TCP DNAT/SNAT, and 25 ms latency |
 | 2026-08-22 | macOS arm64 and constrained Linux arm64 container | overload smoke results passed as recorded in [load testing](load-testing.md) |
 | 2026-08-22 | macOS arm64, cargo-dist 0.32.0 | clean-tree release plan and artifact-lie validation passed for the initial release configuration |
 
-Cross-platform hosted checks, a 24-hour qualification soak, clean published-asset
-installation, and external security review are deliberately not claimed by this
-development evidence. Envshare must not be described as production-ready for
-secrets until those release gates have independent records.
+The released commit passed cross-platform hosted checks, and clean published-asset
+installation, checksums, and attestations were verified. A 24-hour qualification
+soak and external security review are deliberately not claimed. Envshare must not
+be described as production-ready for high-value secrets until those gates have
+independent records. See the [criterion-level evidence](acceptance-evidence.md).

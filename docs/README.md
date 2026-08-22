@@ -21,6 +21,7 @@ Start with the [user guide](user-guide.md), then use the focused references belo
 - [Security guide](security.md)
 - [Privacy and data handling](privacy.md)
 - [Secret output policy](secret-output-policy.md)
+- [Acceptance evidence](acceptance-evidence.md)
 
 ## Self-host and operate nodes
 
