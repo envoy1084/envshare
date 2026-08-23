@@ -7,9 +7,8 @@ directly demonstrates the criterion. `External` means repository work is present
 but the criterion requires an independent reviewer or deployed infrastructure and
 is not claimed complete.
 
-The current qualification code commit is
-`d2da708bde2c6a256ce4ba8aefc6509259bc385b`. The released `v0.1.1` commit is
-`d735c652148c2b7c9c85b12b414e2babac5f4c77`.
+The current qualification code and released `v0.1.2` commit is
+`8fceb8ab41f33186910672f9a40d3c305816d009`.
 
 ## Functional
 
@@ -67,7 +66,7 @@ The current qualification code commit is
 | Capacity and availability alerts are active | External | Versioned Prometheus rules and a dashboard exist under [`deploy/monitoring`](../deploy/monitoring), but alert routing must be activated and exercised by an operator in staging. |
 | Identity backup and restore is tested | External | Stable identity round-trip tests and a restore procedure exist; an isolated deployed-host restore record is still required. |
 | Docker and systemd deployment docs are tested from a clean VPS | External | Hardened assets and validation commands exist, but no clean public VPS qualification record is attached. |
-| Release binaries and images are signed | Verified | All 31 `v0.1.1` release assets have GitHub attestations constrained to the release workflow. The public `ghcr.io/envoy1084/envshare-node:0.1.1` index is keylessly signed and has GitHub provenance; both verify against digest `sha256:7a979d3b84d0f047ccba4c338ddb93b68227968242de66dd48f643891fc00801`. |
+| Release binaries and images are signed | Verified | All 31 `v0.1.2` release assets have GitHub attestations constrained to the release workflow. The public multi-platform image has GitHub provenance and verifies at `ghcr.io/envoy1084/envshare-node@sha256:6123c0a804908647ccac859b0d665311afa9fec36390700e8e29efcd539b291b`. |
 | Incident owner and vulnerability path are published | Verified | [`SECURITY.md`](../SECURITY.md) and the [incident runbook](operations.md). |
 
 ## Qualification record
@@ -80,15 +79,15 @@ The current qualification code commit is
 | Fuzz | Capability, transcript, CBOR, and frame targets each ran 60 seconds with `cargo-fuzz 0.13.2` and no crash or sanitizer finding. |
 | NAT/TCP | Privileged isolated Linux namespace gate passed with UDP blocked, TCP DNAT/SNAT, and 25 ms latency, as recorded in [quality gates](quality-gates.md). |
 | Overload | macOS and constrained Linux relay/discovery smoke runs passed with bounded acceptance and cleanup, as recorded in [load testing](load-testing.md). |
-| Cross-platform | The focused Linux/macOS/Windows [CI run](https://github.com/envoy1084/envshare/actions/runs/32575145826) passed, including the hosted Windows private-output ACL regression and clean installer smokes. |
-| Published transfer | The [release qualification](https://github.com/envoy1084/envshare/actions/runs/32574706429) installed `v0.1.1` from GitHub and passed exact-payload QUIC/TCP transfers on Linux, macOS, and Windows plus relay-only on Linux. Linux Arm64 and x86-64 containers passed the same published relay test; the Intel macOS binary passed QUIC/TCP under Rosetta. |
-| Distribution | The [release workflow](https://github.com/envoy1084/envshare/actions/runs/32574138079) published the [`v0.1.1` release](https://github.com/envoy1084/envshare/releases/tag/v0.1.1) with 31 assets. All archive checksums matched and every asset attestation verified against the release workflow. The [container workflow](https://github.com/envoy1084/envshare/actions/runs/32574138071) published the signed `linux/amd64` and `linux/arm64` index; both images returned `envshare-node 0.1.1`, both SPDX 2.3 SBOMs contained 89 packages, and GitHub provenance plus the Cosign transparency-log signature verified against the immutable digest. |
+| Cross-platform | The focused Linux/macOS/Windows [CI run](https://github.com/envoy1084/envshare/actions/runs/32635184286) passed, including the hosted Windows private-output ACL regression and clean installer smokes. |
+| Published transfer | The [release qualification](https://github.com/envoy1084/envshare/actions/runs/32635186201) installed `v0.1.2` from GitHub and passed its published-artifact transfer gates. A clean local profile also completed an exact-payload, relay-only transfer through the deployed public node using no network flag; the receiver wrote mode `0600` and the sender confirmed consumption. |
+| Distribution | The [release workflow](https://github.com/envoy1084/envshare/actions/runs/32635186201) published the [`v0.1.2` release](https://github.com/envoy1084/envshare/releases/tag/v0.1.2) with 31 assets and verified their attestations. The [container workflow](https://github.com/envoy1084/envshare/actions/runs/32635186200) published the signed `linux/amd64` and `linux/arm64` image index at digest `sha256:6123c0a804908647ccac859b0d665311afa9fec36390700e8e29efcd539b291b`; the deployed node reports healthy and ready with its stable peer identity. |
 | Release dry-run | `scripts/release-check.sh` passed from a clean tree at the current qualification commit and validates both published-transfer harnesses. |
 | External maturity | Deployed soak operation and independent review are not repository implementation tasks. They remain explicit prerequisites for a future production-secret approval. |
 
 ## Release classification
 
-`v0.1.1` is the recommended public initial release. Its implemented behavior,
+`v0.1.2` is the recommended public initial release. Its implemented behavior,
 published installers, transfer paths, and signed artifacts are qualified. It is
 not a production-secret approval; that label still requires the external criteria
 above, especially independent review and a deployed soak.
