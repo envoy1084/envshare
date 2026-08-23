@@ -23,7 +23,8 @@ Run the installer directly from the versioned HTTPS release:
 
 ```console
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/envoy1084/envshare/releases/download/v0.1.1/install.sh | sh
+  --connect-timeout 10 --max-time 120 \
+  https://github.com/envoy1084/envshare/releases/download/v0.1.2/install.sh | sh
 ```
 
 The default destination is `$HOME/.local/bin/envshare`. Select an absolute
@@ -31,8 +32,9 @@ destination without a prompt:
 
 ```console
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/envoy1084/envshare/releases/download/v0.1.1/install.sh |
-  sh -s -- --version 0.1.1 --install-dir "$HOME/bin"
+  --connect-timeout 10 --max-time 120 \
+  https://github.com/envoy1084/envshare/releases/download/v0.1.2/install.sh |
+  sh -s -- --version 0.1.2 --install-dir "$HOME/bin"
 ```
 
 Pass `--force` only when intentionally replacing that path. `--dry-run` performs
@@ -45,7 +47,7 @@ shell profile, or collect telemetry.
 Download and invoke the version-pinned installer:
 
 ```powershell
-$version = "0.1.1"
+$version = "0.1.2"
 $script = Invoke-RestMethod "https://github.com/envoy1084/envshare/releases/download/v$version/install.ps1"
 & ([scriptblock]::Create($script)) -Version $version
 ```
@@ -68,7 +70,7 @@ Each release includes a cargo-dist-generated `envshare.rb` formula for the macOS
 and Linux targets. Install the pinned formula asset after reviewing it:
 
 ```console
-version=0.1.1
+version=0.1.2
 curl --proto '=https' --tlsv1.2 -LsSf \
   "https://github.com/envoy1084/envshare/releases/download/v$version/envshare.rb" \
   -o envshare.rb
@@ -109,6 +111,15 @@ After installation, make sure the chosen directory is on `PATH`, then run:
 ```console
 envshare --version
 envshare --help
+```
+
+If the initial `curl ... install.sh | sh` request is blocked by a network or CDN
+path, download the same attested release asset with GitHub CLI and run it locally:
+
+```console
+gh release download v0.1.2 --repo envoy1084/envshare --pattern install.sh
+gh attestation verify install.sh --repo envoy1084/envshare
+sh install.sh
 ```
 
 Envshare is Apache-2.0-only. The release archive includes the project license.

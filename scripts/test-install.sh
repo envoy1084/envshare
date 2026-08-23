@@ -52,7 +52,7 @@ url=
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --output) output=$2; shift 2 ;;
-        --proto) shift 2 ;;
+        --proto|--connect-timeout|--max-time|--retry|--retry-delay) shift 2 ;;
         --tlsv1.2) shift ;;
         --fail|--location|--silent|--show-error) shift ;;
         *) url=$1; shift ;;

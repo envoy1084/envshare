@@ -87,9 +87,11 @@ a readiness dependency.
 - A checksum failure must stop before replacement. Retry from a trustworthy
   network, compare the release digest, and verify the GitHub attestation. Do not
   disable verification.
+- A stalled GitHub release download is bounded by the documented curl timeouts.
+  If that route remains unavailable, use the GitHub CLI fallback in the
+  [installation guide](installation.md); it downloads the same attested asset.
 - If the chosen directory is not on `PATH`, invoke the full installed path or add
   the directory yourself; installers do not edit shell profiles or system PATH.
 
 The [CLI reference](cli.md) maps error classes to stable exit statuses. Report
 reproducible security issues privately as described in the [security policy](../SECURITY.md).
-

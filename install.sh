@@ -130,8 +130,10 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+    --connect-timeout 10 --max-time 300 --retry 3 --retry-delay 2 \
     --output "$work_dir/$archive" "$archive_url"
 curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+    --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 2 \
     --output "$work_dir/$archive.sha256" "$checksum_url"
 
 expected=$(awk 'NR == 1 { print $1 }' "$work_dir/$archive.sha256")
