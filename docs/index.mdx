@@ -1,77 +1,58 @@
 ---
-title: "Envshare documentation"
+title: "Envshare"
 sidebarTitle: "Overview"
 description: "Send an environment file to another developer without an account, upload, or permanent shared link."
 keywords: ["env file sharing", "dotenv", "libp2p", "developer secrets"]
 icon: "braces"
-mode: "custom"
 ---
 
-<section className="env-hero">
-  <div className="env-hero-copy">
-    <div className="env-kicker">One file. One receiver. No account.</div>
-    <h1>Pass an environment file without putting it in the cloud.</h1>
-    <p>
-      Envshare makes a short-lived, encrypted handoff between two online
-      computers. The sender stays in control until one receiver claims it.
-    </p>
-    <div className="env-actions">
-      <a className="env-button env-button-primary" href="/quickstart">Send your first file</a>
-      <a className="env-button env-button-secondary" href="https://github.com/envoy1084/envshare">View on GitHub</a>
-    </div>
-  </div>
+Envshare makes a short-lived, encrypted handoff between two online computers.
+The sender stays in control until one receiver claims the file.
 
-  <div className="handoff" aria-label="An Envshare transfer between two terminals">
-    <div className="terminal-card terminal-card-sender">
-      <div className="terminal-label"><span className="status-dot"></span>sender</div>
-      <code><span className="prompt">$</span> envshare send .env</code>
-      <div className="terminal-result">Share ready</div>
-    </div>
-    <div className="handoff-code">esh1-••••-••••</div>
-    <div className="terminal-card terminal-card-receiver">
-      <div className="terminal-label"><span className="status-dot"></span>receiver</div>
-      <code><span className="prompt">$</span> envshare receive</code>
-      <div className="terminal-result">Saved to .env</div>
-    </div>
-  </div>
-</section>
+```bash
+envshare send .env
+```
 
-<section className="env-home-section">
-  <div className="env-section-heading">
-    <span>Choose what you need</span>
-    <h2>Start with the normal path. Open the advanced pages only when you need them.</h2>
-  </div>
+<Warning>
+Envshare 0.x has not completed an independent security review. Use test
+credentials for now.
+</Warning>
 
-  <div className="env-home-grid">
-    <a className="env-home-card" href="/quickstart">
-      <span className="env-card-icon">01</span>
-      <h3>Send a file</h3>
-      <p>Install the CLI and complete a transfer in a few commands.</p>
-    </a>
-    <a className="env-home-card" href="/run">
-      <span className="env-card-icon">02</span>
-      <h3>Run without saving</h3>
-      <p>Give received values to one process instead of writing a file.</p>
-    </a>
-    <a className="env-home-card" href="/security">
-      <span className="env-card-icon">03</span>
-      <h3>Know the boundary</h3>
-      <p>See what Envshare protects and what still depends on you.</p>
-    </a>
-  </div>
-</section>
+## Start here
 
-<section className="env-promise">
-  <div>
-    <strong>No account</strong>
-    <span>There is nothing to sign up for.</span>
-  </div>
-  <div>
-    <strong>No stored payload</strong>
-    <span>The sender must remain online.</span>
-  </div>
-  <div>
-    <strong>One claim</strong>
-    <span>The first valid receiver closes the share.</span>
-  </div>
-</section>
+<Columns cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install Envshare and send your first file.
+  </Card>
+  <Card title="Install Envshare" icon="download" href="/installation">
+    Set up the CLI on macOS, Linux, or Windows.
+  </Card>
+  <Card title="Send and receive" icon="send" href="/sharing">
+    Choose files, keys, destinations, and merge behavior.
+  </Card>
+  <Card title="Security and privacy" icon="shield-check" href="/security">
+    Understand what Envshare protects and what remains visible.
+  </Card>
+</Columns>
+
+## The normal flow
+
+<Steps>
+  <Step title="Send the file">
+    Run `envshare send .env` and keep the terminal open.
+  </Step>
+  <Step title="Pass the share code">
+    Send the code through a private channel you already trust.
+  </Step>
+  <Step title="Receive the file">
+    Run `envshare receive`, enter the code, and choose where to save it.
+  </Step>
+</Steps>
+
+The built-in public network works without accounts or extra network flags. The
+public node helps the peers find and relay each other, but it should never see
+the share code or plaintext payload.
+
+<Card title="How Envshare works" icon="waypoints" href="/how-it-works">
+  Learn about the public node, one-time claim, and encrypted transfer.
+</Card>

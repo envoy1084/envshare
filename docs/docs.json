@@ -1,42 +1,19 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "aspen",
+  "theme": "mint",
   "name": "Envshare",
   "description": "Learn how to install Envshare, securely send and receive dotenv files, run commands with temporary values, and operate a private libp2p relay.",
   "colors": {
-    "primary": "#5757D9",
-    "light": "#7474E8",
-    "dark": "#6A6ADA"
+    "primary": "#5757D9"
   },
   "logo": {
-    "light": "/logo-light.svg",
-    "dark": "/logo-dark.svg",
+    "light": "/logo.svg",
+    "dark": "/logo.svg",
     "href": "https://envshare.xyz/docs"
   },
-  "favicon": "/favicon.svg",
-  "fonts": {
-    "heading": {
-      "family": "Space Grotesk",
-      "weight": 600
-    },
-    "body": {
-      "family": "Manrope",
-      "weight": 400
-    }
-  },
+  "favicon": "/logo.svg",
   "icons": {
     "library": "lucide"
-  },
-  "background": {
-    "color": {
-      "light": "#F7F8FC",
-      "dark": "#0E1020"
-    }
-  },
-  "styling": {
-    "eyebrows": "breadcrumbs",
-    "codeblocks": "system",
-    "latex": false
   },
   "navigation": {
     "groups": [
