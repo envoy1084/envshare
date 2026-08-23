@@ -5,6 +5,20 @@ Versioning while the public interfaces remain experimental during `0.x`.
 
 ## [Unreleased]
 
+### Added
+
+- Add interactive dotenv file selection, a focused share-code view, hidden
+  receive prompts, and safe existing-file choices for the human CLI.
+- Add atomic dotenv merge and add-missing modes that preserve unrelated local
+  declarations and comments.
+
+### Changed
+
+- Hide sender peer and route diagnostics from normal output; `--verbose` retains
+  them for direct-mode troubleshooting.
+- Keep scripted receive behavior deterministic through explicit `--output` and
+  `--mode` options.
+
 ## [0.1.2] - 2026-08-23
 
 ### Added

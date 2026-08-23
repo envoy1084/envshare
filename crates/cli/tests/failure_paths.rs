@@ -27,6 +27,7 @@ impl DirectSender {
         fs::write(&input, payload)?;
         let mut child = Command::new(binary())
             .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+            .arg("--verbose")
             .args(["--expires", "15s"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

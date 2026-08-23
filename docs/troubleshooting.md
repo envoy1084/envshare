@@ -41,8 +41,9 @@ collapses several security-sensitive failures into the same public error.
 
 ## Output file fails
 
-- The default `.env.shared` may already exist. Choose another path or inspect it
-  before using `--force`.
+- Interactive receive targets `.env` and offers safe choices when it exists.
+  Automation defaults to `.env.shared`; choose another path or pass an explicit
+  `--mode merge`, `--mode append-missing`, or `--mode replace` when it exists.
 - The parent must be a writable directory. Symlinks, directories, and unsupported
   special files are refused at the destination boundary.
 - On Windows, confirm the current user can create a private file and apply the

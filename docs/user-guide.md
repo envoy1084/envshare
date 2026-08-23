@@ -27,10 +27,12 @@ the [threat model](threat-model.md) before evaluating it with test credentials.
 On the sender:
 
 ```console
-envshare send .env
+envshare send
 ```
 
-Envshare prints the capability only after its listener, required relay
+Choose a dotenv file from the searchable terminal list. Passing a path directly,
+such as `envshare send .env`, skips that prompt. Envshare shows the capability
+only after its listener, required relay
 reservation, and at least one configured registration are ready. Send that code
 to the receiver through an authenticated channel. Do not put it in issue trackers,
 chat rooms with broad history, screenshots, shell history, or CI logs.
@@ -38,11 +40,13 @@ chat rooms with broad history, screenshots, shell history, or CI logs.
 On the receiver, enter the code at the hidden prompt:
 
 ```console
-envshare receive --output .env.shared
+envshare receive
 ```
 
-The destination is created privately and atomically. Existing files are refused
-unless `--force` is intentional. Use `--durable` when the acknowledgement must
+If `.env` does not exist, it is created privately and atomically. If it exists,
+choose whether to merge incoming values, add only keys that are missing locally,
+create another file, replace the complete file, or cancel. Envshare makes this
+choice before claiming the share. Use `--durable` when the acknowledgement must
 wait for file and parent-directory metadata to reach durable storage.
 
 The `--network` flag is optional and defaults to `public`. Named profiles for
@@ -52,11 +56,11 @@ self-hosted networks can be configured as shown in
 
 ## Explicit direct mode
 
-For a known reachable route, send with a listener and give the receiver the
-printed Peer ID, address, and capability through the authenticated channel:
+For a known reachable route, use verbose output and give the receiver the printed
+Peer ID, address, and capability through the authenticated channel:
 
 ```console
-envshare send .env --listen /ip4/127.0.0.1/tcp/0
+envshare send .env --verbose --listen /ip4/127.0.0.1/tcp/0
 envshare receive --peer PEER_ID --address MULTIADDR --output .env.shared
 ```
 
@@ -73,7 +77,7 @@ envshare send .env --keys DATABASE_URL,API_TOKEN
 ```
 
 Missing selected keys are rejected unless `--allow-missing-keys` is explicit.
-Human output explicitly reports `Payload format: normalized selected keys` before
+Verbose human output reports `Payload format: normalized selected keys` before
 waiting for a receiver. JSON mode reports the non-secret
 `"payload_format":"dotenv_normalized"` field on its ready event; code-only mode
 continues to print exactly the capability and nothing else.
@@ -95,6 +99,9 @@ Prefer a pipe over a command-line capability argument:
 ```console
 printf '%s\n' "$ENVSHARE_CODE" | envshare receive --code-stdin --output .env.shared
 ```
+
+When an automation target may already exist, also pass an explicit mode such as
+`--mode merge` or `--mode replace`. Omit `--mode` to keep no-clobber creation.
 
 `--code-only` is the explicit secret-bearing sender mode. With `send --json`,
 stdout contains bounded, non-secret lifecycle records and the capability remains

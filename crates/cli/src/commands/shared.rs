@@ -18,7 +18,7 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use zeroize::Zeroizing;
 
-use crate::{CliFailure, ExitCode, args::ConnectionArgs};
+use crate::{CliFailure, ExitCode, args::ConnectionArgs, presentation};
 
 pub(crate) struct RunningNetwork {
     cancellation: CancellationToken,
@@ -140,12 +140,19 @@ impl Drop for RunningNetwork {
 pub(crate) async fn receive_direct(
     arguments: &mut ConnectionArgs,
 ) -> Result<(PendingDirectOffer, RunningNetwork), CliFailure> {
+    let code_text = read_code(arguments)?;
+    receive_direct_with_code(arguments, &code_text).await
+}
+
+pub(crate) async fn receive_direct_with_code(
+    arguments: &ConnectionArgs,
+    code_text: &str,
+) -> Result<(PendingDirectOffer, RunningNetwork), CliFailure> {
     let network_id = arguments
         .network
         .as_deref()
         .ok_or_else(invalid_resolved_config)?
         .to_owned();
-    let code_text = read_code(arguments)?;
     let code = ShareCode::from_str(code_text.trim())
         .map_err(|_| CliFailure::new(ExitCode::InvalidCode, "invalid share code"))?;
     let keypair = identity::Keypair::generate_ed25519();
@@ -278,7 +285,7 @@ fn receiver_session(
     .map_err(Into::into)
 }
 
-fn read_code(arguments: &mut ConnectionArgs) -> Result<Zeroizing<String>, CliFailure> {
+pub(crate) fn read_code(arguments: &mut ConnectionArgs) -> Result<Zeroizing<String>, CliFailure> {
     if let Some(code) = arguments.code.take() {
         return Ok(Zeroizing::new(code));
     }
@@ -294,9 +301,7 @@ fn read_code(arguments: &mut ConnectionArgs) -> Result<Zeroizing<String>, CliFai
             "interactive code prompt requires a terminal; use --code-stdin",
         ));
     }
-    rpassword::prompt_password("Share code: ")
-        .map(Zeroizing::new)
-        .map_err(|_| CliFailure::new(ExitCode::InvalidCode, "could not read share code"))
+    presentation::prompt_share_code().map(Zeroizing::new)
 }
 
 fn random_receiver_nonce() -> Result<[u8; 32], CliFailure> {

@@ -40,7 +40,7 @@ history, swap, backups, or secrets copied after delivery.
 
 Inspect selected keys before sending, prefer a clean dedicated working directory,
 and do not elevate the CLI. Treat delivery-unknown as potentially delivered.
-Avoid `--force`, `--override`, `--clean-env`, `--lan`, public mDNS, long expiration,
+Avoid `--mode replace`, `--override`, `--clean-env`, `--lan`, public mDNS, long expiration,
 or relay-only operation unless their specific tradeoff is intended. Keep host
 patches, clocks, DNS, and endpoint protection current.
 

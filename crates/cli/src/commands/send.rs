@@ -14,7 +14,7 @@ use protocol::{ContentType, SecretEnvelope};
 use tokio_util::sync::CancellationToken;
 use zeroize::Zeroizing;
 
-use crate::{CliFailure, ExitCode, args::SendArgs};
+use crate::{CliFailure, ExitCode, args::SendArgs, presentation};
 
 use super::shared::{RunningNetwork, read_sender_input, reserve_relays};
 
@@ -32,7 +32,17 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
             "expiry must be positive",
         ));
     }
-    let envelope = prepare_envelope(&arguments, expires)?;
+    let input = match &arguments.input {
+        Some(path) => path.clone(),
+        None if arguments.json || arguments.code_only => {
+            return Err(CliFailure::new(
+                ExitCode::Usage,
+                "input file is required for machine-readable output",
+            ));
+        }
+        None => presentation::choose_sender_input()?,
+    };
+    let envelope = prepare_envelope(&arguments, &input, expires)?;
     let code = ShareCode::generate().map_err(|_| CoreError::Internal)?;
     let root = derive_root(code.secret(), network).map_err(|_| CoreError::InvalidCode)?;
     let namespace = DiscoveryNamespace::from_room_id(*root.room_id().as_bytes());
@@ -49,13 +59,13 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
         establish_public_reachability(&arguments, &client, &mut events, &advertised, &namespace)
             .await?;
 
-    emit_ready(
+    let send_view = emit_ready(
         &arguments,
         &code_text,
         &sender_peer,
         &advertised[0],
         envelope.content_type(),
-    );
+    )?;
     std::io::stdout().flush().map_err(|_| CoreError::Output)?;
     let actor = SenderActor::new(
         root,
@@ -86,24 +96,59 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
     }
     stop_registration(registration.take()).await;
     running_network.stop().await?;
-    let state = outcome?;
+    let state = match outcome {
+        Ok(state) => state,
+        Err(failure) => {
+            if let Some(view) = send_view {
+                view.cancel("Share stopped");
+            }
+            return Err(failure);
+        }
+    };
+    finish_sender(state, send_view, &arguments)
+}
+
+fn finish_sender(
+    state: SenderState,
+    send_view: Option<presentation::SendView>,
+    arguments: &SendArgs,
+) -> Result<i32, CliFailure> {
     match state {
         SenderState::Consumed => {
-            emit_event(arguments.json, "consumed");
+            if let Some(view) = send_view {
+                view.consumed()?;
+            } else {
+                emit_event(arguments, "consumed");
+            }
             Ok(ExitCode::Success.as_i32())
         }
-        SenderState::Expired => Err(CliFailure::new(
-            ExitCode::ShareUnavailable,
-            "share expired before it was claimed",
-        )),
-        SenderState::DeliveryUnknown => Err(CliFailure::new(
-            ExitCode::Transfer,
-            "delivery could not be confirmed; the share will not reopen",
-        )),
-        _ => Err(CliFailure::new(
-            ExitCode::Internal,
-            "sender stopped unexpectedly",
-        )),
+        SenderState::Expired => {
+            if let Some(view) = send_view {
+                view.cancel("Share expired");
+            }
+            Err(CliFailure::new(
+                ExitCode::ShareUnavailable,
+                "share expired before it was claimed",
+            ))
+        }
+        SenderState::DeliveryUnknown => {
+            if let Some(view) = send_view {
+                view.cancel("Delivery could not be confirmed");
+            }
+            Err(CliFailure::new(
+                ExitCode::Transfer,
+                "delivery could not be confirmed; the share will not reopen",
+            ))
+        }
+        _ => {
+            if let Some(view) = send_view {
+                view.cancel("Share stopped");
+            }
+            Err(CliFailure::new(
+                ExitCode::Internal,
+                "sender stopped unexpectedly",
+            ))
+        }
     }
 }
 
@@ -188,9 +233,10 @@ const fn relay_failure(missing: bool) -> CliFailure {
 
 fn prepare_envelope(
     arguments: &SendArgs,
+    input: &std::path::Path,
     expires: std::time::Duration,
 ) -> Result<SecretEnvelope, CliFailure> {
-    let raw = Zeroizing::new(read_sender_input(&arguments.input)?);
+    let raw = Zeroizing::new(read_sender_input(input)?);
     let (payload, content_type) = if arguments.keys.is_empty() {
         (raw.as_slice().to_vec(), ContentType::DotenvRaw)
     } else {
@@ -331,7 +377,7 @@ fn emit_ready(
     peer: &network::PeerId,
     address: &Multiaddr,
     content_type: ContentType,
-) {
+) -> Result<Option<presentation::SendView>, CliFailure> {
     if arguments.code_only {
         println!("{code}");
     } else if arguments.json {
@@ -345,7 +391,7 @@ fn emit_ready(
             })
         );
         eprintln!("Share code: {code}");
-    } else {
+    } else if arguments.verbose {
         println!("Share code: {code}");
         println!("Sender peer: {peer}");
         if arguments.discovery.relay_only {
@@ -356,7 +402,10 @@ fn emit_ready(
         if content_type == ContentType::DotenvNormalized {
             println!("Payload format: normalized selected keys");
         }
+    } else {
+        return presentation::show_share(code).map(Some);
     }
+    Ok(None)
 }
 
 const fn payload_format(content_type: ContentType) -> &'static str {
@@ -366,10 +415,10 @@ const fn payload_format(content_type: ContentType) -> &'static str {
     }
 }
 
-fn emit_event(json: bool, event: &'static str) {
-    if json {
+fn emit_event(arguments: &SendArgs, event: &'static str) {
+    if arguments.json {
         println!("{}", serde_json::json!({ "event": event }));
-    } else {
+    } else if !arguments.code_only {
         println!("Share consumed.");
     }
 }

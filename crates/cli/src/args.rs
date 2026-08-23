@@ -39,9 +39,10 @@ pub(crate) enum Command {
 }
 
 #[derive(Debug, Args)]
+#[allow(clippy::struct_excessive_bools)] // These booleans are independent CLI flags.
 pub(crate) struct SendArgs {
     /// Input file, or `-` for stdin.
-    pub input: PathBuf,
+    pub input: Option<PathBuf>,
     /// Sender-owned share lifetime.
     #[arg(long, value_parser = humantime::parse_duration)]
     pub expires: Option<Duration>,
@@ -65,6 +66,9 @@ pub(crate) struct SendArgs {
     /// Emit non-secret machine-readable lifecycle events.
     #[arg(long)]
     pub json: bool,
+    /// Include peer and route diagnostics in human output.
+    #[arg(long, conflicts_with_all = ["json", "code_only"])]
+    pub verbose: bool,
 }
 
 #[derive(Debug, Args)]
@@ -72,10 +76,13 @@ pub(crate) struct ReceiveArgs {
     #[command(flatten)]
     pub connection: ConnectionArgs,
     /// Destination chosen by the receiver.
-    #[arg(short, long, default_value = ".env.shared")]
-    pub output: PathBuf,
+    #[arg(short, long)]
+    pub output: Option<PathBuf>,
+    /// How to handle an existing destination.
+    #[arg(long, value_enum, conflicts_with = "force")]
+    pub mode: Option<ReceiveMode>,
     /// Atomically replace an existing regular destination.
-    #[arg(long)]
+    #[arg(long, hide = true)]
     pub force: bool,
     /// Flush content and parent directory metadata before acknowledgement.
     #[arg(long)]
@@ -83,6 +90,18 @@ pub(crate) struct ReceiveArgs {
     /// Emit non-secret machine-readable events.
     #[arg(long)]
     pub json: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub(crate) enum ReceiveMode {
+    /// Refuse to overwrite an existing destination.
+    Create,
+    /// Replace the entire existing destination atomically.
+    Replace,
+    /// Add missing variables and update existing variables.
+    Merge,
+    /// Add only missing variables and retain existing values.
+    AppendMissing,
 }
 
 #[derive(Debug, Args)]

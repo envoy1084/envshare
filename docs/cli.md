@@ -6,14 +6,20 @@ is resolved before network activity using the precedence documented in
 
 ## Transfer commands
 
-- `envshare send <FILE>` shares raw dotenv bytes. Use `-` for bounded stdin,
+- `envshare send [FILE]` shares raw dotenv bytes. Without a file, an interactive
+  terminal offers dotenv files from the current directory. Use `-` for bounded stdin,
   `--keys A,B` for deterministic normalized selection, and `--expires` for the
-  sender-owned lifetime. `--code-only` prints only the bearer capability;
+  sender-owned lifetime. Human output shows only the capability and transfer
+  state by default; `--verbose` adds peer and route diagnostics. `--code-only`
+  prints only the bearer capability;
   `--json` emits non-secret lifecycle records and sends the capability to
   stderr instead.
-- `envshare receive` writes to `.env.shared` by default using an atomic private
-  file. Existing destinations are refused unless `--force` is present;
-  `--durable` flushes file and directory metadata before acknowledgement.
+- `envshare receive` asks for the capability and targets `.env` interactively.
+  A missing destination is created directly. For an existing file, choose merge,
+  add missing keys, save elsewhere, replace, or cancel. Scripts remain
+  deterministic with `--output` and `--mode create|merge|append-missing|replace`;
+  without a terminal their legacy default is `.env.shared`. `--durable` flushes
+  file and directory metadata before acknowledgement.
 - `envshare run -- PROGRAM ARGS...` executes the program directly, without a
   shell. Received variables fill absent inherited names by default. `--override`
   replaces matches, `--clean-env` removes the inherited environment, and

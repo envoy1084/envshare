@@ -38,10 +38,15 @@ The built-in `public` network uses the Envshare-operated discovery and relay
 node, so a normal transfer needs no network flags:
 
 ```console
-envshare send .env
-envshare receive --output .env.shared
+envshare send
+envshare receive
 envshare run -- cargo run
 ```
+
+In an interactive terminal, `send` offers the dotenv files in the current
+directory and `receive` asks for the share code. A new payload is saved to
+`.env`; when that file exists, Envshare offers to merge values, add only missing
+keys, save elsewhere, replace it, or cancel before claiming the share.
 
 The sender reveals the capability only after the public node accepts its relay
 reservation and signed registration. The receiver discovers the sender and
@@ -57,9 +62,10 @@ envshare receive --peer <PEER_ID> --address <MULTIADDR> --output .env.shared
 envshare run --peer <PEER_ID> --address <MULTIADDR> -- cargo run
 ```
 
-The sender prints a capability code, Peer ID, and direct multiaddress after its
-listener is ready. The receiver reads the code through a hidden prompt by
-default; `--code-stdin` is available for automation.
+The sender shows only the capability and transfer state by default. Add
+`--verbose` when explicit direct mode requires the Peer ID and multiaddress. The
+receiver reads the code through a hidden prompt by default; `--code-stdin` is
+available for automation.
 
 ## Development
 

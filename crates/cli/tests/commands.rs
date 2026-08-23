@@ -133,6 +133,7 @@ fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dy
 
     let mut sender = Command::new(binary())
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .arg("--verbose")
         .args(["--network", DIRECT_TEST_NETWORK])
         .arg("--expires")
         .arg("15s")
@@ -197,6 +198,7 @@ fn selected_key_send_reports_and_delivers_normalized_payload() -> Result<(), Box
 
     let mut sender = Command::new(binary())
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .arg("--verbose")
         .args(["--network", DIRECT_TEST_NETWORK])
         .args(["--keys", "B,A", "--expires", "15s"])
         .stdout(Stdio::piped())
@@ -249,12 +251,73 @@ fn selected_key_send_reports_and_delivers_normalized_payload() -> Result<(), Box
 }
 
 #[test]
+fn receive_merge_updates_existing_dotenv_without_losing_local_entries() -> Result<(), Box<dyn Error>>
+{
+    let directory = tempfile::tempdir()?;
+    let input = directory.path().join("merge-source.env");
+    let output = directory.path().join(".env");
+    fs::write(&input, b"SHARED=new\nADDED=received\n")?;
+    fs::write(&output, b"# local settings\nLOCAL=kept\nSHARED=old\n")?;
+
+    let mut sender = Command::new(binary())
+        .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .arg("--verbose")
+        .args(["--network", DIRECT_TEST_NETWORK, "--expires", "15s"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let sender_stdout = sender.stdout.take().ok_or("missing sender stdout")?;
+    let mut sender_lines = BufReader::new(sender_stdout).lines();
+    let code = value_after(
+        &sender_lines.next().ok_or("missing share code")??,
+        "Share code: ",
+    )?;
+    let peer = value_after(
+        &sender_lines.next().ok_or("missing sender peer")??,
+        "Sender peer: ",
+    )?;
+    let address = value_after(
+        &sender_lines.next().ok_or("missing sender address")??,
+        "Direct address: ",
+    )?;
+
+    let receiver = Command::new(binary())
+        .args([
+            "receive",
+            "--network",
+            DIRECT_TEST_NETWORK,
+            "--code",
+            &code,
+            "--peer",
+            &peer,
+            "--address",
+            &address,
+            "--mode",
+            "merge",
+        ])
+        .arg("--output")
+        .arg(&output)
+        .output()?;
+    if !receiver.status.success() {
+        let _ = sender.kill();
+    }
+    assert!(receiver.status.success());
+    assert_eq!(
+        fs::read(&output)?,
+        b"# local settings\nLOCAL=kept\nSHARED=\"new\"\nADDED=\"received\"\n"
+    );
+    assert!(sender.wait()?.success());
+    Ok(())
+}
+
+#[test]
 fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("run.env");
     fs::write(&input, b"TOKEN=received-value\n")?;
     let mut sender = Command::new(binary())
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .arg("--verbose")
         .args(["--network", DIRECT_TEST_NETWORK])
         .arg("--expires")
         .arg("15s")
@@ -407,6 +470,7 @@ fn relay_only_profile_transfers_without_a_direct_listener() -> Result<(), Box<dy
         .arg("--config")
         .arg(&config)
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .arg("--verbose")
         .args(["--expires", "15s", "--relay-only"])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -466,6 +530,7 @@ fn federated_transfer_survives_two_of_three_nodes_unavailable() -> Result<(), Bo
     fs::write(&input, FEDERATED_PAYLOAD)?;
     let mut sender = network_command("send", FEDERATED_TEST_NETWORK)
         .arg(input.to_str().ok_or("non-UTF-8 input path")?)
+        .arg("--verbose")
         .args([
             "--expires",
             "15s",
