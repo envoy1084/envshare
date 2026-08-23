@@ -37,15 +37,21 @@ pub(crate) async fn execute(mut arguments: RunArgs) -> Result<i32, CliFailure> {
         EnvironmentMode::Overlay
     };
     let child = spawn_child(program.clone(), child_arguments, &environment, mode)?;
+    let child_task = tokio::spawn(wait_child_forwarding_interrupt(child));
+    tokio::task::yield_now().await;
     emit_event(arguments.json, "child_started", None);
     let received = pending.acknowledge().await;
     if received.is_err() {
+        child_task.abort();
+        let _ = child_task.await;
         return Err(CliFailure::new(
             ExitCode::Transfer,
             "child started, but sender acknowledgement was not confirmed; do not retry elsewhere",
         ));
     }
-    let status = wait_child_forwarding_interrupt(child).await?;
+    let status = child_task
+        .await
+        .map_err(|_| CliFailure::new(ExitCode::Internal, "child task failed"))??;
     network.stop().await?;
     let status = exit_status(status);
     emit_event(arguments.json, "child_exited", Some(status));
