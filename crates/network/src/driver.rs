@@ -135,6 +135,10 @@ enum DiscoveryCommand {
         address: Multiaddr,
         result: oneshot::Sender<Result<(), NetworkError>>,
     },
+    RemoveAddress {
+        address: Multiaddr,
+        result: oneshot::Sender<Result<(), NetworkError>>,
+    },
     Register {
         node: PeerId,
         node_addresses: Vec<Multiaddr>,
@@ -310,6 +314,19 @@ impl DiscoveryProvider for NetworkClient {
         self.send(Command::Discovery(DiscoveryCommand::Unregister {
             node,
             namespace,
+            result,
+        }))
+        .await?;
+        receiver.await.map_err(|_| NetworkError::TaskStopped)?
+    }
+}
+
+impl NetworkClient {
+    /// Removes one address from signed Rendezvous registrations without closing its listener.
+    pub async fn remove_discovery_address(&self, address: Multiaddr) -> Result<(), NetworkError> {
+        let (result, receiver) = oneshot::channel();
+        self.send(Command::Discovery(DiscoveryCommand::RemoveAddress {
+            address,
             result,
         }))
         .await?;
@@ -500,6 +517,10 @@ impl NetworkDriver {
         match command {
             DiscoveryCommand::AddAddress { address, result } => {
                 self.swarm.add_external_address(address);
+                let _ = result.send(Ok(()));
+            }
+            DiscoveryCommand::RemoveAddress { address, result } => {
+                self.swarm.remove_external_address(&address);
                 let _ = result.send(Ok(()));
             }
             DiscoveryCommand::Register {

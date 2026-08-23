@@ -67,15 +67,32 @@ pub(crate) async fn reserve_relays(
         }
     })
     .await;
-    relays
+    let mut routes = Vec::new();
+    for relay in relays
         .iter()
         .filter(|relay| reservations.contains(&relay.peer))
-        .filter_map(|relay| {
-            listeners
-                .remove(&relay.peer)
-                .map(|address| (relay.peer, address))
-        })
-        .collect()
+    {
+        let Some(runtime_address) = listeners.remove(&relay.peer) else {
+            continue;
+        };
+        let canonical = canonical_relay_route(relay, client.local_peer_id());
+        if runtime_address != canonical {
+            let _ = client.remove_discovery_address(runtime_address).await;
+        }
+        routes.push((relay.peer, canonical));
+    }
+    routes
+}
+
+fn canonical_relay_route(
+    relay: &network::DiscoveryNode,
+    destination: PeerId,
+) -> network::Multiaddr {
+    let mut address = relay.address.clone();
+    address.push(network::MultiaddrProtocol::P2p(relay.peer));
+    address.push(network::MultiaddrProtocol::P2pCircuit);
+    address.push(network::MultiaddrProtocol::P2p(destination));
+    address
 }
 
 fn relay_peer_from_circuit(address: &network::Multiaddr) -> Option<PeerId> {
@@ -88,6 +105,31 @@ fn relay_peer_from_circuit(address: &network::Multiaddr) -> Option<PeerId> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr as _;
+
+    use super::*;
+
+    #[test]
+    fn canonical_route_uses_configured_public_endpoint_and_destination()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let relay_peer = PeerId::random();
+        let destination = PeerId::random();
+        let relay = network::DiscoveryNode::from_str(&format!(
+            "/dns4/node.envshare.xyz/tcp/4001/p2p/{relay_peer}"
+        ))?;
+
+        assert_eq!(
+            canonical_relay_route(&relay, destination).to_string(),
+            format!(
+                "/dns4/node.envshare.xyz/tcp/4001/p2p/{relay_peer}/p2p-circuit/p2p/{destination}"
+            )
+        );
+        Ok(())
+    }
 }
 
 impl RunningNetwork {

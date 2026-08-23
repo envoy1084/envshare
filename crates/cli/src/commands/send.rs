@@ -142,7 +142,14 @@ async fn start_reachable_network(arguments: &SendArgs) -> Result<ReachableNetwor
     if arguments.discovery.require_relay && reservations.is_empty() {
         return Err(relay_failure(arguments.discovery.relays.is_empty()));
     }
-    advertised.extend(reservations.into_iter().map(|(_, address)| address));
+    let relay_addresses = reservations
+        .into_iter()
+        .map(|(_, address)| address)
+        .collect::<Vec<_>>();
+    if !relay_addresses.is_empty() && !arguments.discovery.nodes.is_empty() {
+        advertised.clear();
+    }
+    advertised.extend(relay_addresses);
     if advertised.is_empty() {
         return Err(CliFailure::new(
             ExitCode::Network,

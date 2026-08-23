@@ -19,6 +19,8 @@ use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
 
 const FEDERATED_PAYLOAD: &[u8] = b"PUBLIC_TEST=capability-authenticated\n";
+const DIRECT_TEST_NETWORK: &str = "direct-test";
+const FEDERATED_TEST_NETWORK: &str = "federated-test";
 
 fn binary() -> &'static str {
     env!("CARGO_BIN_EXE_envshare")
@@ -32,12 +34,22 @@ fn local_node_config() -> Result<NodeConfig, Box<dyn Error>> {
     })
 }
 
+fn strict_public_node_config() -> Result<NodeConfig, Box<dyn Error>> {
+    Ok(NodeConfig {
+        listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
+        discovery_allow_private_addresses: false,
+        ..NodeConfig::default()
+    })
+}
+
 #[test]
 fn invalid_code_never_echoes_the_supplied_value() -> Result<(), Box<dyn Error>> {
     let sentinel = "SECRET-SENTINEL-NOT-A-CODE";
     let output = Command::new(binary())
         .args([
             "receive",
+            "--network",
+            DIRECT_TEST_NETWORK,
             "--code",
             sentinel,
             "--peer",
@@ -115,6 +127,7 @@ fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dy
 
     let mut sender = Command::new(binary())
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .args(["--network", DIRECT_TEST_NETWORK])
         .arg("--expires")
         .arg("15s")
         .stdout(Stdio::piped())
@@ -138,6 +151,8 @@ fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dy
     let receiver = Command::new(binary())
         .args([
             "receive",
+            "--network",
+            DIRECT_TEST_NETWORK,
             "--code",
             &code,
             "--peer",
@@ -176,6 +191,7 @@ fn selected_key_send_reports_and_delivers_normalized_payload() -> Result<(), Box
 
     let mut sender = Command::new(binary())
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .args(["--network", DIRECT_TEST_NETWORK])
         .args(["--keys", "B,A", "--expires", "15s"])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -202,6 +218,8 @@ fn selected_key_send_reports_and_delivers_normalized_payload() -> Result<(), Box
     let receiver = Command::new(binary())
         .args([
             "receive",
+            "--network",
+            DIRECT_TEST_NETWORK,
             "--code",
             &code,
             "--peer",
@@ -231,6 +249,7 @@ fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), B
     fs::write(&input, b"TOKEN=received-value\n")?;
     let mut sender = Command::new(binary())
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+        .args(["--network", DIRECT_TEST_NETWORK])
         .arg("--expires")
         .arg("15s")
         .stdout(Stdio::piped())
@@ -254,6 +273,8 @@ fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), B
     let mut runner = Command::new(binary());
     runner.args([
         "run",
+        "--network",
+        DIRECT_TEST_NETWORK,
         "--code",
         &code,
         "--peer",
@@ -283,7 +304,7 @@ fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), B
 #[test]
 fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
     let runtime = tokio::runtime::Runtime::new()?;
-    let node_config = local_node_config()?;
+    let node_config = strict_public_node_config()?;
     let (node_peer, mut events, node) =
         NodeServer::new(network::identity::Keypair::generate_ed25519(), &node_config)?;
     let cancellation = CancellationToken::new();
@@ -341,7 +362,7 @@ fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
 #[test]
 fn relay_only_profile_transfers_without_a_direct_listener() -> Result<(), Box<dyn Error>> {
     let runtime = tokio::runtime::Runtime::new()?;
-    let node_config = local_node_config()?;
+    let node_config = strict_public_node_config()?;
     let (node_peer, mut events, node) =
         NodeServer::new(network::identity::Keypair::generate_ed25519(), &node_config)?;
     let cancellation = CancellationToken::new();
@@ -358,7 +379,14 @@ fn relay_only_profile_transfers_without_a_direct_listener() -> Result<(), Box<dy
     })?;
     let directory = tempfile::tempdir()?;
     let config = directory.path().join("relay.toml");
-    let endpoint = format!("{address}/p2p/{node_peer}");
+    let port = address
+        .iter()
+        .find_map(|protocol| match protocol {
+            network::MultiaddrProtocol::Tcp(port) => Some(port),
+            _ => None,
+        })
+        .ok_or("relay node did not listen on TCP")?;
+    let endpoint = format!("/dns4/localhost/tcp/{port}/p2p/{node_peer}");
     fs::write(
         &config,
         format!(
@@ -433,6 +461,8 @@ fn federated_transfer_survives_two_of_three_nodes_unavailable() -> Result<(), Bo
     let mut sender = Command::new(binary())
         .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
         .args([
+            "--network",
+            FEDERATED_TEST_NETWORK,
             "--expires",
             "15s",
             "--discovery-node",
@@ -484,6 +514,8 @@ fn federated_transfer_survives_two_of_three_nodes_unavailable() -> Result<(), Bo
     let receiver = Command::new(binary())
         .args([
             "receive",
+            "--network",
+            FEDERATED_TEST_NETWORK,
             "--code",
             &code,
             "--discovery-node",
@@ -517,7 +549,12 @@ fn assert_successful_payload(
     output: &std::path::Path,
     expected: &[u8],
 ) -> Result<(), Box<dyn Error>> {
-    assert!(result.status.success());
+    assert!(
+        result.status.success(),
+        "receiver failed: {} / {}",
+        String::from_utf8_lossy(&result.stderr),
+        String::from_utf8_lossy(&result.stdout)
+    );
     assert_eq!(fs::read(output)?, expected);
     Ok(())
 }
@@ -590,7 +627,7 @@ fn start_malicious_registration(
     })?;
     runtime.block_on(client.add_discovery_address(address))?;
     let code: code::ShareCode = code_text.parse()?;
-    let root = crypto::derive_root(code.secret(), "public-v1")?;
+    let root = crypto::derive_root(code.secret(), FEDERATED_TEST_NETWORK)?;
     let namespace = network::DiscoveryNamespace::from_room_id(*root.room_id().as_bytes());
     runtime.block_on(client.register(node_peer, node_address, namespace, 30))?;
     runtime.block_on(async {

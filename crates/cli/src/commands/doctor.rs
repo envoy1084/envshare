@@ -44,10 +44,6 @@ pub(crate) async fn execute(
         .map_err(|_| network_failure())?;
     let address = wait_for_listener(&mut events).await?;
     let direct = check_route_connectivity(&client, &mut events, &address, None).await;
-    client
-        .add_discovery_address(address.clone())
-        .await
-        .map_err(|_| network_failure())?;
     let namespace = disposable_namespace()?;
     let relay_reservations = reserve_relays(&client, &mut events, &profile.relays).await;
     let mut relay_circuits = HashSet::new();
