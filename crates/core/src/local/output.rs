@@ -36,7 +36,7 @@ pub fn write_private_atomic(
     if file_name.is_empty() {
         return Err(CoreError::Output);
     }
-    let parent = destination.parent().unwrap_or_else(|| Path::new("."));
+    let parent = destination_parent(destination);
     let canonical_parent = parent.canonicalize().map_err(|_| CoreError::Output)?;
     let safe_destination: PathBuf = canonical_parent.join(file_name);
     validate_destination(&safe_destination, options.replace)?;
@@ -73,6 +73,13 @@ pub fn write_private_atomic(
         sync_parent(&canonical_parent)?;
     }
     Ok(())
+}
+
+fn destination_parent(destination: &Path) -> &Path {
+    destination
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
 }
 
 fn validate_destination(destination: &Path, replace: bool) -> Result<(), CoreError> {
@@ -165,6 +172,19 @@ fn sync_parent(_parent: &Path) -> Result<(), CoreError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bare_relative_destination_uses_current_directory() {
+        assert_eq!(destination_parent(Path::new(".env")), Path::new("."));
+        assert_eq!(
+            destination_parent(Path::new("received.env")),
+            Path::new(".")
+        );
+        assert_eq!(
+            destination_parent(Path::new("./received.env")),
+            Path::new(".")
+        );
+    }
 
     #[test]
     fn no_clobber_and_explicit_replacement_are_atomic() -> Result<(), CoreError> {

@@ -135,7 +135,7 @@ fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dy
     let _network_guard = network_test_guard()?;
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("source.env");
-    let output = directory.path().join("received.env");
+    let output = directory.path().join(".env");
     let payload = b"# exact bytes\r\nTOKEN=payload-sentinel\r\nEMPTY=\r\n";
     fs::write(&input, payload)?;
 
@@ -176,7 +176,8 @@ fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dy
             &address,
         ])
         .arg("--output")
-        .arg(&output)
+        .arg(".env")
+        .current_dir(directory.path())
         .output()?;
     if !receiver.status.success() {
         let _ = sender.kill();
