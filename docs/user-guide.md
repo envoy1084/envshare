@@ -12,7 +12,7 @@ the [threat model](threat-model.md) before evaluating it with test credentials.
 ## Before a transfer
 
 1. Install the same Envshare version on both supported systems. Version 0.1.2
-   includes the authenticated Envshare public node as its default network.
+   and later include the authenticated Envshare public node as the default network.
 2. Use the built-in `public` network, a self-hosted profile, or explicit direct
    mode. A public node is not trusted with plaintext; its stable Peer ID is
    pinned in the client.

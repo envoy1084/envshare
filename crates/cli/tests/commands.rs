@@ -7,7 +7,7 @@ use std::{
     io::{BufRead as _, BufReader},
     process::{Command, Stdio},
     sync::{
-        Arc,
+        Arc, Mutex, MutexGuard,
         atomic::{AtomicBool, Ordering},
     },
 };
@@ -21,6 +21,13 @@ use tokio_util::sync::CancellationToken;
 const FEDERATED_PAYLOAD: &[u8] = b"PUBLIC_TEST=capability-authenticated\n";
 const DIRECT_TEST_NETWORK: &str = "direct-test";
 const FEDERATED_TEST_NETWORK: &str = "federated-test";
+static NETWORK_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+fn network_test_guard() -> Result<MutexGuard<'static, ()>, Box<dyn Error>> {
+    NETWORK_TEST_LOCK
+        .lock()
+        .map_err(|_| "network test lock was poisoned".into())
+}
 
 fn binary() -> &'static str {
     env!("CARGO_BIN_EXE_envshare")
@@ -125,6 +132,7 @@ fn completions_manpage_and_network_profiles_are_generated() -> Result<(), Box<dy
 
 #[test]
 fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dyn Error>> {
+    let _network_guard = network_test_guard()?;
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("source.env");
     let output = directory.path().join("received.env");
@@ -188,6 +196,7 @@ fn direct_send_and_receive_preserve_exact_private_payload() -> Result<(), Box<dy
 
 #[test]
 fn selected_key_send_reports_and_delivers_normalized_payload() -> Result<(), Box<dyn Error>> {
+    let _network_guard = network_test_guard()?;
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("selected.env");
     let output = directory.path().join("selected.received.env");
@@ -253,6 +262,7 @@ fn selected_key_send_reports_and_delivers_normalized_payload() -> Result<(), Box
 #[test]
 fn receive_merge_updates_existing_dotenv_without_losing_local_entries() -> Result<(), Box<dyn Error>>
 {
+    let _network_guard = network_test_guard()?;
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("merge-source.env");
     let output = directory.path().join(".env");
@@ -301,7 +311,11 @@ fn receive_merge_updates_existing_dotenv_without_losing_local_entries() -> Resul
     if !receiver.status.success() {
         let _ = sender.kill();
     }
-    assert!(receiver.status.success());
+    assert!(
+        receiver.status.success(),
+        "receiver failed: {}",
+        String::from_utf8_lossy(&receiver.stderr)
+    );
     assert_eq!(
         fs::read(&output)?,
         b"# local settings\nLOCAL=kept\nSHARED=\"new\"\nADDED=\"received\"\n"
@@ -312,6 +326,7 @@ fn receive_merge_updates_existing_dotenv_without_losing_local_entries() -> Resul
 
 #[test]
 fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), Box<dyn Error>> {
+    let _network_guard = network_test_guard()?;
     let directory = tempfile::tempdir()?;
     let input = directory.path().join("run.env");
     fs::write(&input, b"TOKEN=received-value\n")?;
@@ -372,6 +387,7 @@ fn direct_run_overrides_environment_and_propagates_exit_status() -> Result<(), B
 
 #[test]
 fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
+    let _network_guard = network_test_guard()?;
     let runtime = tokio::runtime::Runtime::new()?;
     let node_config = strict_public_node_config()?;
     let (node_peer, mut events, node) =
@@ -430,6 +446,7 @@ fn doctor_uses_only_a_disposable_namespace() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn relay_only_profile_transfers_without_a_direct_listener() -> Result<(), Box<dyn Error>> {
+    let _network_guard = network_test_guard()?;
     let runtime = tokio::runtime::Runtime::new()?;
     let node_config = strict_public_node_config()?;
     let (node_peer, mut events, node) =
@@ -505,8 +522,8 @@ fn relay_only_profile_transfers_without_a_direct_listener() -> Result<(), Box<dy
 
 #[test]
 fn federated_transfer_survives_two_of_three_nodes_unavailable() -> Result<(), Box<dyn Error>> {
-    let runtime = tokio::runtime::Runtime::new()?;
-    let config = local_node_config()?;
+    let _network_guard = network_test_guard()?;
+    let (runtime, config) = (tokio::runtime::Runtime::new()?, local_node_config()?);
     let (node_peer, mut node_events, node) =
         NodeServer::new(network::identity::Keypair::generate_ed25519(), &config)?;
     let node_cancel = CancellationToken::new();

@@ -2,7 +2,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$Version = $(if ($env:ENVSHARE_VERSION) { $env:ENVSHARE_VERSION } else { "0.1.2" }),
+    [string]$Version = $(if ($env:ENVSHARE_VERSION) { $env:ENVSHARE_VERSION } else { "0.1.3" }),
     [string]$InstallDir = $(if ($env:ENVSHARE_INSTALL_DIR) { $env:ENVSHARE_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\Envshare\bin" }),
     [switch]$Force,
     [switch]$DryRun
