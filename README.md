@@ -25,7 +25,7 @@ does not provide anonymity.
 Install a versioned release on Linux or macOS:
 
 ```console
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/envoy1084/envshare/releases/download/v0.1.1/install.sh | sh
+curl --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 120 -LsSf https://github.com/envoy1084/envshare/releases/download/v0.1.2/install.sh | sh
 ```
 
 Windows PowerShell and explicit-location commands are documented in the
@@ -34,24 +34,20 @@ archive SHA-256 before installing it and never prompt or edit shell profiles.
 
 ## Commands
 
-Start a node with a persistent identity, then use its printed endpoint for
-federated discovery:
+The built-in `public` network uses the Envshare-operated discovery and relay
+node, so a normal transfer needs no network flags:
 
 ```console
-envshare-node key generate --output node.key
-envshare-node serve --identity node.key --config node.toml
-
-envshare send .env --discovery-node <NODE_MULTIADDR_WITH_PEER_ID>
-envshare receive --discovery-node <NODE_MULTIADDR_WITH_PEER_ID> --output .env.shared
-envshare run --discovery-node <NODE_MULTIADDR_WITH_PEER_ID> -- cargo run
+envshare send .env
+envshare receive --output .env.shared
+envshare run -- cargo run
 ```
 
-The sender reveals the capability only after at least one configured discovery
-node accepts its signed registration. Configure multiple `--discovery-node`
-values for federation. The receiver queries them concurrently, bounds and
-deduplicates their untrusted results, then capability-authenticates candidates.
-Use `--lan` to admit private addresses and `--mdns` for optional LAN discovery;
-`--relay-only` disables direct candidates and mDNS.
+The sender reveals the capability only after the public node accepts its relay
+reservation and signed registration. The receiver discovers the sender and
+capability-authenticates it before accepting the encrypted payload. Network
+flags remain available for self-hosted profiles, explicit endpoints, and LAN
+use; see the [configuration guide](docs/configuration.md).
 
 Explicit direct mode remains available:
 

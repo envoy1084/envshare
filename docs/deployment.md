@@ -1,9 +1,18 @@
 # Node deployment
 
-Run at least three nodes in independent regions and failure domains. A starting
-size for each node is 2 vCPU, 2 GiB RAM, 20 GiB disk, public IPv4, and preferably
-IPv6. Relay bandwidth and concurrent connections are the main capacity drivers;
-the sample limits are conservative starting points, not measured guarantees.
+The initial public launch intentionally runs one node. Do not add more public
+nodes until usage and failure data justify federation. Start with 2 vCPU, 2 GiB
+RAM, 20 GiB disk, public IPv4, and preferably IPv6. This is one failure domain:
+maintenance, host failure, or a network outage temporarily stops new public
+transfers. Relay bandwidth and concurrent connections are the main capacity
+drivers; the sample limits are conservative starting points, not measured
+guarantees.
+
+The checked-in node configuration caps the initial service at 128 reservations,
+64 circuits, 512 connections, 32 connections per source IP, 2 MiB per circuit,
+and a 1 GiB process-memory admission threshold. Compose adds a 1.5 GiB cgroup
+limit, 256-process limit, and 65,536 file-descriptor limit. Raise one limit at a
+time only after observing saturation, memory, descriptors, and bandwidth.
 
 ## Network and firewall
 
@@ -49,18 +58,17 @@ Tagged releases publish a signed multi-platform node image for `linux/amd64` and
 `linux/arm64`, including an SBOM and build provenance:
 
 ```console
-docker pull ghcr.io/envoy1084/envshare-node:0.1.1
-cosign verify ghcr.io/envoy1084/envshare-node:0.1.1 \
+docker pull ghcr.io/envoy1084/envshare-node:0.1.2
+cosign verify ghcr.io/envoy1084/envshare-node:0.1.2 \
   --certificate-identity-regexp \
-  'https://github.com/envoy1084/envshare/.github/workflows/container-release.yml@refs/(tags/v0.1.1|heads/main)' \
+  'https://github.com/envoy1084/envshare/.github/workflows/container-release.yml@refs/tags/v0.1.2' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-The `v0.1.1` image index digest is
-`sha256:7a979d3b84d0f047ccba4c338ddb93b68227968242de66dd48f643891fc00801`.
-Pin that immutable `sha256:` digest instead of the mutable tag. The branch
-identity in the verification expression is needed only for a
-maintainer-dispatched publication of an existing release tag.
+After verification, resolve the published index digest with
+`docker buildx imagetools inspect ghcr.io/envoy1084/envshare-node:0.1.2` and pin
+`ghcr.io/envoy1084/envshare-node@sha256:...` in the deployment instead of relying
+on the mutable tag.
 
 From the repository root:
 
@@ -91,7 +99,7 @@ Verify the running node:
 docker compose -f deploy/docker/compose.yaml exec node \
   envshare-node healthcheck --url http://127.0.0.1:9100/health/ready
 curl --fail http://127.0.0.1:9100/metrics
-envshare doctor --network public-v1 --verbose
+envshare doctor --verbose
 ```
 
 ## Native systemd deployment

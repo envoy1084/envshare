@@ -10,6 +10,13 @@ The default path follows the platform configuration directory. Override it with
 `ENVSHARE_NETWORK`, `ENVSHARE_SHARE_TTL`, `ENVSHARE_MDNS`, and
 `ENVSHARE_RELAY_ONLY`.
 
+With no configuration file, Envshare selects its embedded `public` profile. It
+uses one authenticated node at `node.envshare.xyz`, requires a relay reservation,
+and advertises and accepts relay routes only. Consequently, `envshare send FILE`,
+`envshare receive`, `envshare run -- PROGRAM`, and `envshare doctor` work without
+network flags. Existing configuration files keep their selected default and gain
+the built-in `public` profile if it is absent.
+
 ```toml
 version = 1
 default_network = "team"
@@ -22,6 +29,7 @@ mdns = false
 [networks.team]
 network_id = "team"
 require_relay = true
+relay_only = true
 rendezvous = [
   "/dns4/node.example/udp/4001/quic-v1/p2p/12D3KooW...",
 ]
@@ -34,8 +42,10 @@ Manage profiles with `envshare network list|show|add|remove|use`. `network add`
 accepts a file containing one profile body (the fields below `[networks.NAME]`
 in the example). Rendezvous and relay endpoints are independent federated sets.
 When `require_relay = true`, at least one relay must be configured and senders
-must establish a reservation before printing the capability. Config writes are
-atomic and owner-private.
+must establish a reservation before printing the capability. `relay_only = true`
+also prevents direct listener advertisement, direct candidate dialing, and mDNS.
+The profile name is local configuration; `network_id` is the cryptographic scope
+that both peers must share. Config writes are atomic and owner-private.
 
 Generate installation assets without checking in stale generated copies:
 

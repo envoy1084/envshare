@@ -12,7 +12,7 @@ For every region, continuously verify:
 envshare-node healthcheck --url http://127.0.0.1:9100/health/live
 envshare-node healthcheck --url http://127.0.0.1:9100/health/ready
 curl --fail http://127.0.0.1:9100/metrics
-envshare doctor --network public-v1 --verbose
+envshare doctor --verbose
 ```
 
 The local checks prove process progress and listeners. `doctor` must run from an

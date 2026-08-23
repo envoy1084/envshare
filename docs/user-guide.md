@@ -11,10 +11,11 @@ the [threat model](threat-model.md) before evaluating it with test credentials.
 
 ## Before a transfer
 
-1. Install the same Envshare version on both supported systems.
-2. Choose either explicit direct mode or at least one trusted-by-configuration
-   public discovery node. A public node is not trusted with plaintext, but its
-   stable Peer ID and endpoint still need an authentic distribution channel.
+1. Install the same Envshare version on both supported systems. Version 0.1.2
+   includes the authenticated Envshare public node as its default network.
+2. Use the built-in `public` network, a self-hosted profile, or explicit direct
+   mode. A public node is not trusted with plaintext; its stable Peer ID is
+   pinned in the client.
 3. Confirm the input contains only the intended keys and no comments or values
    that should remain local. The capability is a bearer secret; share it through
    a separate authenticated channel.
@@ -26,9 +27,7 @@ the [threat model](threat-model.md) before evaluating it with test credentials.
 On the sender:
 
 ```console
-envshare send .env \
-  --discovery-node /dns4/node.example/udp/4001/quic-v1/p2p/12D3KooW... \
-  --relay /dns4/node.example/udp/4001/quic-v1/p2p/12D3KooW...
+envshare send .env
 ```
 
 Envshare prints the capability only after its listener, required relay
@@ -39,17 +38,16 @@ chat rooms with broad history, screenshots, shell history, or CI logs.
 On the receiver, enter the code at the hidden prompt:
 
 ```console
-envshare receive \
-  --discovery-node /dns4/node.example/udp/4001/quic-v1/p2p/12D3KooW... \
-  --output .env.shared
+envshare receive --output .env.shared
 ```
 
 The destination is created privately and atomically. Existing files are refused
 unless `--force` is intentional. Use `--durable` when the acknowledgement must
 wait for file and parent-directory metadata to reach durable storage.
 
-Named profiles avoid repeatedly typing node endpoints. Configure them as shown
-in [client configuration](configuration.md), then select one with
+The `--network` flag is optional and defaults to `public`. Named profiles for
+self-hosted networks can be configured as shown in
+[client configuration](configuration.md), then selected with
 `envshare network use NAME` or `--network NAME`.
 
 ## Explicit direct mode

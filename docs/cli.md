@@ -31,13 +31,14 @@ retried to another destination.
 
 ## Connectivity
 
-Explicit direct mode uses `--peer` and `--address`. Public discovery accepts
-repeated `--discovery-node` values. Senders accept repeated `--relay` endpoints;
-profile `relays` are applied automatically. `--mdns` enables local discovery,
-`--lan` admits private candidate routes, and `--relay-only` excludes direct
-listeners and candidates as well as mDNS. The sender does not reveal the
-capability until any required relay reservation and a configured public
-registration are ready.
+The optional `--network` flag defaults to the embedded, relay-only `public`
+profile backed by `node.envshare.xyz`. Explicit direct mode uses `--peer` and
+`--address`. Public discovery accepts repeated `--discovery-node` values. Senders
+accept repeated `--relay` endpoints; profile `relays` are applied automatically.
+`--mdns` enables local discovery, `--lan` admits private candidate routes, and
+`--relay-only` excludes direct listeners and candidates as well as mDNS. The
+sender does not reveal the capability until any required relay reservation and
+a configured public registration are ready.
 
 `envshare doctor` checks local clock and private-output safety, then uses a
 random disposable namespace to test the selected profile's rendezvous nodes and
