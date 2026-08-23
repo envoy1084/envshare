@@ -1,16 +1,16 @@
 # Release and rollback
 
 Envshare releases the `envshare` client for the five targets in the
-[installation guide](installation.md) and `envshare-node` for the two glibc Linux
-targets. All project source and release metadata use Apache-2.0 only.
+[installation guide](installation.md). The node is distributed as a Linux
+container image. All project source and release metadata use Apache-2.0 only.
 
 ## Release preparation
 
 1. Start from a reviewed, clean `main` commit with all required CI checks green.
 2. Update the workspace version, both first-party installer defaults, `Cargo.lock`,
    and `CHANGELOG.md` in one release-preparation change.
-3. Run the [release quality gates](quality-gates.md); the abbreviated pull-request
-   workflow is not release-candidate evidence.
+3. Run the [release quality gates](quality-gates.md); the manually dispatched
+   smoke workflow is not release-candidate evidence.
 4. Install the exact dist version recorded in `Cargo.toml`, then run:
 
    ```console
@@ -19,15 +19,15 @@ targets. All project source and release metadata use Apache-2.0 only.
 
    During development only, `--allow-dirty` permits inspecting a plan before the
    release-preparation commit. It never permits publishing from a dirty tree.
-5. Review the dry-run manifest. It must contain the client archives, Linux node
-   archives, SHA-256 files, CycloneDX SBOMs, shell and PowerShell installers,
-   Homebrew formula, source archive, and no node archives for macOS or Windows.
+5. Review the dry-run manifest. It must contain the client archives, SHA-256
+   files, CycloneDX SBOM, shell and PowerShell installers, Homebrew formula, and
+   source archive. It must not contain node artifacts.
 6. When a release intentionally changes the node image, manually dispatch the
    container workflow after the tag exists. It publishes `linux/amd64` and
    `linux/arm64`, attaches SBOM/provenance, and keylessly signs the image index
    digest. Client-only tags must not publish a node image.
-7. Create one annotated, signed tag matching the workspace version exactly, for
-   example `v0.1.0`, and push only that tag after approval.
+7. Manually run the CLI release workflow with a tag matching the client version,
+   for example `v0.1.0`, after approval.
 
 The generated release workflow refuses partial publication: all target builds
 must succeed before its host job creates a release. It embeds auditable dependency
@@ -39,15 +39,11 @@ the public beta; the workflow does not attempt to change repository settings.
 
 ## CI and clean-machine evidence
 
-Pull requests execute the dist plan through `.github/workflows/release.yml`.
-The main CI workflow intentionally runs only a fast subset: workspace formatting,
-linting and documentation; capability, cryptography, and protocol tests on Linux,
-macOS, and Windows; dependency policy; and installer smoke tests on fresh Linux
-and Windows runners. Exhaustive tests, fuzzing, coverage, network emulation, and
-load or soak runs are release gates rather than duplicated CI work. The installer
-harness installs into a new temporary directory, executes the binary, proves an
-existing installation is not silently overwritten, corrupts the fixture checksum,
-and proves failed verification leaves the installed binary unchanged.
+All three GitHub workflows are manual-only. The CI workflow runs one Ubuntu job
+containing formatting and the focused code, cryptography, and protocol tests.
+Clippy, documentation, cross-platform checks, dependency policy, installer tests,
+exhaustive tests, fuzzing, coverage, network emulation, and load or soak runs are
+performed locally as release gates rather than duplicated in CI.
 
 The harness intercepts only the network fetch and supplies a locally built archive
 with cargo-dist's exact layout. A release candidate must also run the published
@@ -55,11 +51,8 @@ HTTPS installers and verify GitHub attestations on clean systems after the draft
 artifacts exist. Record those URLs, digests, runner images, and results in the
 release issue; local fixture tests are not evidence that GitHub hosting works.
 
-After publication, manually dispatch `.github/workflows/release-qualification.yml`
-with the immutable tag. It downloads through the published installers and runs
-exact-payload QUIC and TCP transfers on clean Linux, macOS, and Windows runners,
-plus a relay-only transfer using the published Linux node archive. This workflow
-is deliberately separate from the small per-change CI suite.
+After publication, perform the clean-machine installer and transfer checks in the
+post-release checklist manually and record the evidence in the release issue.
 
 ## Post-release verification
 

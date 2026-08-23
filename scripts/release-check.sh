@@ -46,12 +46,6 @@ dist_version=$(dist --version | awk '{ print $2 }')
 
 metadata=$(cargo metadata --locked --no-deps --format-version 1)
 client_version=$(printf '%s' "$metadata" | jq -r '.packages[] | select(.name == "cli") | .version')
-node_version=$(printf '%s' "$metadata" | jq -r '.packages[] | select(.name == "node") | .version')
-[ "$client_version" = "$node_version" ] || {
-    printf '%s\n' "client and node versions differ" >&2
-    exit 1
-}
-
 shell_installer_version=$(sed -n 's/^INSTALLER_VERSION="\([^"]*\)"/\1/p' install.sh)
 powershell_installer_version=$(sed -n 's/.*else { "\([^"]*\)" }).*/\1/p' install.ps1)
 [ "$client_version" = "$shell_installer_version" ] || {
@@ -84,10 +78,7 @@ for artifact in \
     cli-installer.sh \
     cli-installer.ps1 \
     envshare.rb \
-    cli.cdx.xml \
-    node-aarch64-unknown-linux-gnu.tar.xz \
-    node-x86_64-unknown-linux-gnu.tar.xz \
-    node.cdx.xml
+    cli.cdx.xml
 do
     jq -e --arg artifact "$artifact" \
         '[.releases[].artifacts[]] | index($artifact) != null' "$plan" >/dev/null || {
@@ -96,8 +87,8 @@ do
     }
 done
 
-if jq -e '[.releases[] | select(.app_name == "node") | .artifacts[]] | any(test("apple|windows"))' "$plan" >/dev/null; then
-    printf '%s\n' "node release unexpectedly includes a non-Linux archive" >&2
+if jq -e '[.releases[] | select(.app_name == "node")] | length > 0' "$plan" >/dev/null; then
+    printf '%s\n' "CLI release unexpectedly includes node artifacts" >&2
     exit 1
 fi
 
@@ -110,7 +101,6 @@ shellcheck -s sh \
 yq eval '.' .github/workflows/ci.yml >/dev/null
 yq eval '.' .github/workflows/release.yml >/dev/null
 yq eval '.' .github/workflows/container-release.yml >/dev/null
-yq eval '.' .github/workflows/release-qualification.yml >/dev/null
 
 if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoLogo -NoProfile -Command \

@@ -1,9 +1,9 @@
 # Release quality gates
 
-Envshare keeps pull-request CI deliberately small. CI runs formatting, Clippy,
-documentation, a focused security-critical test subset, dependency policy, and
-Linux/Windows installer smoke tests. The exhaustive and privileged checks below
-run for release candidates and are not scheduled or duplicated in CI.
+Envshare keeps its manually dispatched CI deliberately small. It runs formatting
+and a focused security-critical test subset on Ubuntu. The exhaustive and
+privileged checks below run locally for release candidates and are not scheduled
+or duplicated in CI.
 
 ## Required release-candidate gates
 
@@ -18,9 +18,9 @@ complete output, commit ID, host details, and tool versions to the release issue
 | Full tests | `cargo test --workspace --all-targets --all-features --locked` | all tests pass |
 | Coverage | `cargo llvm-cov --workspace --all-targets --all-features --locked --fail-under-lines 80 --summary-only` | line coverage is at least 80% |
 | Fuzzing | `scripts/fuzz-check.sh 60` | all four targets finish without a crash or sanitizer finding |
-| Cross-platform | focused GitHub matrix plus candidate artifact tests | Linux, macOS, and Windows checks pass on the candidate commit |
+| Cross-platform | local and clean-machine candidate artifact tests | Linux, macOS, and Windows checks pass on the candidate commit |
 | NAT/TCP fallback | build the release client, then run `sudo scripts/test-nat.sh` on isolated Linux | transfer succeeds across separate namespaces with UDP blocked and emulated latency |
-| Published transfer | manually dispatch `release-qualification.yml` for the tag | installed QUIC/TCP transfers pass on Linux, macOS, and Windows; the published Linux node completes a relay-only transfer |
+| Published transfer | run the published-transfer qualification scripts manually for the tag | installed QUIC/TCP transfers pass on Linux, macOS, and Windows; the public node completes a relay-only transfer |
 | Overload | commands in [load testing](load-testing.md) | bounds hold, zero harness failures, and cleanup returns resources near baseline |
 | Soak | 24-hour procedure in [load testing](load-testing.md) | no crash, restart, OOM, unbounded RSS trend, or descriptor leak |
 | Release | `scripts/release-check.sh` plus published installer/attestation checks in [release](release.md) | complete plan, install/rollback checks, checksums, SBOMs, and attestations pass |

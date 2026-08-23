@@ -112,13 +112,15 @@ inherits = "release"
 lto = "fat"
 
 [workspace.metadata.dist]
-# The generated workflow is intentionally kept Apache-2.0-only, publishes the
-# first-party installers, and carries a cargo-dist 0.32.0 SBOM output fix.
-# Review those local changes explicitly on cargo-dist upgrades.
+# The generated release workflow is manually dispatched and publishes only the
+# CLI. Node distribution is handled by the container release workflow. Local CI
+# edits keep the workflow Apache-2.0-only, retain stable installer names, and fix
+# cargo-dist 0.32.0's CycloneDX output reference.
 allow-dirty = ["ci"]
 cargo-dist-version = "0.32.0"
 ci = ["github"]
-packages = ["cli", "node"]
+dispatch-releases = true
+packages = ["cli"]
 targets = [
     "aarch64-apple-darwin",
     "aarch64-unknown-linux-gnu",
@@ -133,7 +135,7 @@ github-attestations = true
 github-attestations-phase = "host"
 github-release = "host"
 install-success-msg = "Envshare is installed. Run 'envshare --help' to get started."
-pr-run-mode = "plan"
+pr-run-mode = "skip"
 source-tarball = true
 
 [workspace.metadata.dist.github-action-commits]
