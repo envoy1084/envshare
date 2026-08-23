@@ -1,0 +1,10 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="172" height="36" viewBox="0 0 172 36" role="img" aria-labelledby="title">
+  <title id="title">Envshare</title>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 8 4 18l7 10" stroke="#5757D9" stroke-width="3"/>
+    <path d="m25 8 7 10-7 10" stroke="#5757D9" stroke-width="3"/>
+    <path d="M13.5 18h9" stroke="#21BFA4" stroke-width="3"/>
+  </g>
+  <text x="43" y="24" fill="#15172B" font-family="Space Grotesk, ui-sans-serif, sans-serif" font-size="20" font-weight="600" letter-spacing="-.4">envshare</text>
+</svg>

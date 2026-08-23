@@ -1,0 +1,43 @@
+---
+title: "Maintainer release notes"
+description: "Internal release, compatibility, and operational checks for Envshare maintainers."
+noindex: true
+hidden: true
+---
+
+This page is intentionally outside the public navigation. It records the checks
+that should not be inferred from a successful build alone.
+
+## Before a release
+
+Run the repository's formatting, Clippy, test, documentation, dependency-policy,
+fuzz, installer, and supported-platform checks. Exercise direct TCP, QUIC,
+discovery, relay, one-time claim, expiration, interruption, private output, and
+secret-safe error paths with sentinel credentials.
+
+The manual CLI release workflow performs the focused qualification subset,
+prepares or resumes the version, builds all supported targets, creates the tag,
+and publishes checksums, SBOMs, and attestations. The separate container workflow
+publishes the node image from an existing release tag. Normal pushes run neither
+workflow.
+
+## Compatibility
+
+Wire, capability, or cryptographic changes require an explicit compatibility
+decision, updated protocol prose and CDDL, deterministic vectors, malformed-input
+tests, and a review of the security boundary. Never reuse an existing protocol
+identifier or domain-separation string for an incompatible meaning.
+
+## Node changes
+
+Validate configuration, identity persistence, liveness, readiness, graceful
+drain, resource limits, both public transports, discovery, relay, and remote
+`doctor` behavior. Load tests must cover bounded registration and circuit
+admission, connection churn, memory, file descriptors, and safe overload.
+
+## Release withdrawal
+
+If an artifact is unsafe, mark the GitHub release accordingly, stop recommending
+the affected installer or image, publish the impact and safe version, and rotate
+any compromised infrastructure identity or credential. Do not silently replace
+an immutable release asset.

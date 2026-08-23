@@ -130,7 +130,7 @@ tests, documentation, and relevant verification commands pass.
       privacy, and security documentation.
 - [x] Run license, advisory, supply-chain, full-test, fuzz, coverage,
       cross-platform, NAT/TCP, overload, and release-candidate gates; record the
-      results in `docs/acceptance-evidence.md` and `docs/quality-gates.md`.
+      required evidence in `docs/maintainers.mdx`.
 
 Deployed soak operation and independent security review are release-maturity
 work owned outside this repository. They remain explicit limitations in the

@@ -22,14 +22,14 @@ does not provide anonymity.
 
 ## Installation
 
-Install a versioned release on Linux or macOS:
+Install the latest release on Linux or macOS:
 
 ```console
-curl -fsSL https://github.com/envoy1084/envshare/releases/download/v0.1.4/install.sh | sh
+curl -fsSL https://github.com/envoy1084/envshare/releases/latest/download/install.sh | sh
 ```
 
 Windows PowerShell and explicit-location commands are documented in the
-[installation guide](docs/installation.md). Release installers verify the
+[installation guide](docs/installation.mdx). Release installers verify the
 archive SHA-256 before installing it and never prompt or edit shell profiles.
 
 ## Commands
@@ -52,7 +52,7 @@ The sender reveals the capability only after the public node accepts its relay
 reservation and signed registration. The receiver discovers the sender and
 capability-authenticates it before accepting the encrypted payload. Network
 flags remain available for self-hosted profiles, explicit endpoints, and LAN
-use; see the [configuration guide](docs/configuration.md).
+use; see the [network guide](docs/networks.mdx).
 
 Explicit direct mode remains available:
 
@@ -82,29 +82,18 @@ cargo deny check
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 [`SECURITY.md`](SECURITY.md) for vulnerability reporting.
 
-## Architecture and protocol
+## Documentation
 
-- [Documentation index](docs/README.md)
-- [User guide](docs/user-guide.md)
-- [Architecture overview](docs/architecture.md)
-- [Threat model](docs/threat-model.md)
-- [Secret output policy](docs/secret-output-policy.md)
-- [Security guide](docs/security.md)
-- [Privacy and data handling](docs/privacy.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Node identity operations](docs/node-identity.md)
-- [Node configuration](docs/node-configuration.md)
-- [Node deployment](docs/deployment.md)
-- [Node operations](docs/operations.md)
-- [Node load and soak testing](docs/load-testing.md)
-- [Installation](docs/installation.md)
-- [Release and rollback](docs/release.md)
-- [Command-line interface](docs/cli.md)
-- [Client configuration](docs/configuration.md)
-- [Protocol specification](protocol/protocol.md)
-- [Capability code format](protocol/code-format.md)
-- [Wire schema](protocol/messages.cddl)
-- [Implementation research](research/envshare-production-architecture.md)
+The Mintlify source lives in [`docs/`](docs/) and follows the normal user path:
+
+- [Quickstart](docs/quickstart.mdx)
+- [Send and receive](docs/sharing.mdx)
+- [Security and privacy](docs/security.mdx)
+- [Troubleshooting](docs/troubleshooting.mdx)
+- [Self-host a node](docs/self-hosting.mdx)
+
+Protocol maintainers can also refer to the [protocol specification](protocol/protocol.md),
+[capability format](protocol/code-format.md), and [wire schema](protocol/messages.cddl).
 
 ## License
 

@@ -1,0 +1,73 @@
+---
+title: "Quickstart"
+description: "Install Envshare and send a dotenv file to another computer in a few minutes."
+keywords: ["envshare quickstart", "send .env file", "receive .env file"]
+icon: "rocket"
+---
+
+This guide uses Envshare's public network. You do not need an account or a
+server of your own. Both computers need internet access, and the sender must
+stay online until the transfer finishes.
+
+<Warning>
+Envshare 0.x has not completed an independent security review. Start with a
+throwaway `.env` file, not production credentials.
+</Warning>
+
+<Steps>
+  <Step title="Install Envshare">
+    On macOS or Linux:
+
+    ```bash
+    curl -fsSL https://github.com/envoy1084/envshare/releases/latest/download/install.sh | sh
+    ```
+
+    Open a new terminal, then check the installation:
+
+    ```bash
+    envshare --version
+    ```
+
+    Windows users can follow the [installation guide](/installation).
+  </Step>
+
+  <Step title="Send the file">
+    In the folder that contains your environment file, run:
+
+    ```bash
+    envshare send .env
+    ```
+
+    Envshare prints a share code after the connection is ready. Keep this
+    terminal open.
+  </Step>
+
+  <Step title="Pass the code privately">
+    Send the code to the receiver through a private channel you already trust.
+    Treat it like a password: anyone who has it can claim the share.
+  </Step>
+
+  <Step title="Receive the file">
+    On the other computer, open the destination folder and run:
+
+    ```bash
+    envshare receive
+    ```
+
+    Paste the code into the hidden prompt. If `.env` already exists, Envshare
+    asks whether to merge it, keep existing values, replace it, or save to a
+    different path.
+  </Step>
+</Steps>
+
+When the receiver saves the file and confirms delivery, the sender exits. The
+same code cannot be used for another normal transfer.
+
+<Columns cols={2}>
+  <Card title="Choose what gets written" icon="file-output" href="/sharing">
+    Learn how file selection, merge modes, and automation work.
+  </Card>
+  <Card title="Check your connection" icon="stethoscope" href="/troubleshooting">
+    Run diagnostics and fix common transfer failures.
+  </Card>
+</Columns>

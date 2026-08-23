@@ -1,0 +1,91 @@
+---
+title: "CLI reference"
+description: "A concise reference for Envshare commands, automation flags, diagnostics, and exit codes."
+keywords: ["envshare CLI", "envshare commands", "envshare flags"]
+icon: "terminal"
+---
+
+Run `envshare <command> --help` for the complete reference installed with your
+version. This page covers the options people use most often.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `envshare send [FILE]` | Share a dotenv file or standard input |
+| `envshare receive` | Save a shared dotenv payload |
+| `envshare run -- COMMAND` | Run one command with shared values |
+| `envshare doctor` | Test local safety and network connectivity |
+| `envshare network …` | Manage named network profiles |
+| `envshare completions TARGET` | Generate completions or a man page |
+
+## Common send options
+
+<ParamField path="--expires DURATION" type="duration">
+  Set the sender-owned lifetime, such as `5m` or `1h`.
+</ParamField>
+
+<ParamField path="--keys NAME,NAME" type="list">
+  Normalize the dotenv input and include only these keys.
+</ParamField>
+
+<ParamField path="--code-only" type="flag">
+  Print only the secret code on standard output. Intended for careful automation.
+</ParamField>
+
+<ParamField path="--verbose" type="flag">
+  Show peer and route details in human output.
+</ParamField>
+
+## Common receive options
+
+<ParamField path="--code-stdin" type="flag">
+  Read the code from standard input. Prefer this in scripts.
+</ParamField>
+
+<ParamField path="--output PATH" type="path">
+  Choose the destination file.
+</ParamField>
+
+<ParamField path="--mode MODE" type="enum">
+  Use `create`, `merge`, `append-missing`, or `replace`.
+</ParamField>
+
+<ParamField path="--durable" type="flag">
+  Flush file and parent-directory metadata before acknowledging delivery.
+</ParamField>
+
+## Global options
+
+| Option | Purpose |
+| --- | --- |
+| `--config PATH` | Use a specific client configuration file |
+| `--no-color` | Disable terminal styling; `NO_COLOR` also works |
+| `--log FILTER` | Enable secret-safe tracing, such as `debug` |
+
+## Machine-readable output
+
+`send --json`, `receive --json`, and `run --json` emit bounded lifecycle records.
+For `send --json`, the share code remains on standard error so it does not mix
+with non-secret JSON on standard output.
+
+## Exit codes
+
+| Code | Meaning |
+| ---: | --- |
+| `0` | Success |
+| `2` | Invalid command or arguments |
+| `10` | Invalid share code |
+| `11` | Share not found or unauthorized |
+| `12` | Share unavailable |
+| `13` | Network failure |
+| `14` | Secure transfer failure |
+| `15` | Private output failure |
+| `16` | Child process could not start |
+| `20` | Invalid configuration |
+| `70` | Internal error |
+| `130` | Interrupted |
+
+<Card title="Generate shell completions" icon="wand-sparkles">
+`envshare completions` supports `bash`, `zsh`, `fish`, `powershell`, `elvish`, and `man`.
+</Card>

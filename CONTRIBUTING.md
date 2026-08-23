@@ -40,5 +40,5 @@ cargo deny check
 ```
 
 These are development checks. Release candidates must also pass the heavier,
-local/manual [release quality gates](docs/quality-gates.md); they intentionally do
-not run on every pull request.
+local/manual [maintainer release checks](docs/maintainers.mdx#before-a-release);
+they intentionally do not run on every pull request.

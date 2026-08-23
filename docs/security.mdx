@@ -1,0 +1,63 @@
+---
+title: "Security and privacy"
+description: "Learn what Envshare protects, what remains visible, and how to share environment files safely."
+keywords: ["envshare security", "encrypted env sharing", "dotenv privacy"]
+icon: "shield-check"
+---
+
+<Warning>
+Envshare 0.x has not completed an independent security review. Do not use it for
+production credentials yet.
+</Warning>
+
+## What Envshare is designed to protect
+
+- The payload is encrypted between sender and receiver.
+- The receiver must prove possession of the share code.
+- A normal share can be claimed once.
+- The public node is not trusted with plaintext.
+- Normal logs and errors are designed not to contain codes or payload values.
+- Received files use private permissions and atomic writes.
+
+## What Envshare does not protect
+
+- A person or process that obtains the share code can claim the share.
+- A compromised sender or receiver can read the plaintext.
+- The public node, hosting provider, ISP, or local network can observe traffic
+  timing, addresses, and approximate size.
+- Envshare does not provide anonymity.
+- Values copied into logs, backups, shell history, crash reports, or child
+  processes remain outside Envshare's control.
+
+## Handle the share code like a password
+
+Send it through a private, authenticated channel. Do not put it in:
+
+- public or long-lived chat rooms;
+- issue trackers;
+- screenshots;
+- shell command arguments;
+- CI logs; or
+- recorded terminal sessions.
+
+For automation, prefer `--code-stdin` over `--code`.
+
+## If a code leaks
+
+1. Stop the sender with <kbd>Ctrl</kbd>+<kbd>C</kbd>.
+2. Assume the payload may have been claimed if the sender already completed.
+3. Rotate the underlying credentials using the destination service's controls.
+4. Create a new share only after the old credentials are no longer valid.
+
+Expiring a code does not revoke plaintext that a receiver already obtained.
+
+## Data retained
+
+Envshare has no accounts, analytics SDK, hosted payload database, or default
+crash reporter. The receiver keeps any file it chooses to save. A self-hosted
+node keeps its identity key and operational configuration; discovery records and
+relay reservations expire.
+
+Report a suspected vulnerability through
+[GitHub private vulnerability reporting](https://github.com/envoy1084/envshare/security/advisories/new).
+Do not include real credentials in the report.

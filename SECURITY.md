@@ -21,6 +21,6 @@ reporter when requested.
 ## Security expectations
 
 Envshare's intended properties and limitations are documented in
-[`docs/threat-model.md`](docs/threat-model.md). A share code is a bearer
+[`docs/security.mdx`](docs/security.mdx). A share code is a bearer
 capability: possession is authorization. A compromised sender or receiver is
 outside the protocol's protection.

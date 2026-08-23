@@ -1,0 +1,57 @@
+---
+title: "Run a command"
+description: "Receive environment variables into one child process without saving a dotenv file."
+keywords: ["envshare run", "temporary environment variables", "run with secrets"]
+icon: "play"
+---
+
+`envshare run` gives received values directly to one child process. It does not
+write a dotenv file.
+
+```bash
+envshare run -- cargo run
+```
+
+Envshare asks for the share code, starts the command directly, and waits for it
+to exit. No shell parses the arguments after `--`.
+
+## Handle existing environment variables
+
+By default, values already present in your environment win. Choose another
+policy when that is not what you want:
+
+<AccordionGroup>
+  <Accordion title="Replace matching values">
+    ```bash
+    envshare run --override -- npm run dev
+    ```
+
+    Received values replace variables with the same names.
+  </Accordion>
+  <Accordion title="Start with a clean environment">
+    ```bash
+    envshare run --clean-env -- ./start-server
+    ```
+
+    The child receives only the shared values and the minimum environment needed
+    to start it.
+  </Accordion>
+  <Accordion title="Fail on any collision">
+    ```bash
+    envshare run --strict -- cargo run
+    ```
+
+    The child does not start if a received key already exists locally.
+  </Accordion>
+</AccordionGroup>
+
+## Stop the command
+
+When you interrupt Envshare, it first forwards the interrupt to the child. If
+the process does not stop, Envshare terminates its contained process group after
+a short grace period.
+
+<Warning>
+The child process can print, copy, upload, or persist every value it receives.
+Envshare cannot revoke a secret after delivery.
+</Warning>

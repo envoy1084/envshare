@@ -162,8 +162,6 @@ def update_versions(old: str, new: str, commits: list[str]) -> None:
     replace("install.sh", f'INSTALLER_VERSION="{old}"', f'INSTALLER_VERSION="{new}"')
     replace("install.ps1", f'else {{ "{old}" }}', f'else {{ "{new}" }}')
     replace("deploy/docker/Dockerfile", f'ARG VERSION="{old}"', f'ARG VERSION="{new}"')
-    replace("README.md", f"/v{old}/install.sh", f"/v{new}/install.sh")
-    replace("docs/installation.md", old, new, expected=None)
     update_changelog(old, new, commits)
 
 

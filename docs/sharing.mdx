@@ -1,0 +1,91 @@
+---
+title: "Send and receive files"
+description: "Choose a dotenv file, share selected keys, and control how Envshare writes the received file."
+keywords: ["envshare send", "envshare receive", "merge dotenv"]
+icon: "send"
+---
+
+## Pick a file
+
+Pass the path when you know it:
+
+```bash
+envshare send .env.local
+```
+
+Or run `send` without a path. In an interactive terminal, Envshare shows dotenv
+files from the current folder and lets you choose one:
+
+```bash
+envshare send
+```
+
+Use `-` to read a bounded dotenv payload from standard input:
+
+```bash
+printf 'API_URL=https://example.test\n' | envshare send -
+```
+
+## Send only some keys
+
+```bash
+envshare send .env --keys DATABASE_URL,API_TOKEN
+```
+
+Envshare rejects a requested key that is missing. Add `--allow-missing-keys` only
+when skipping missing names is intentional.
+
+## Choose where received values go
+
+The interactive command targets `.env` in the current folder:
+
+```bash
+envshare receive
+```
+
+If `.env` does not exist, Envshare creates it with private permissions. If it
+already exists, choose before the share is claimed:
+
+| Choice | Result |
+| --- | --- |
+| Merge | Add new keys and update matching keys |
+| Add missing | Add new keys but keep existing values |
+| Save elsewhere | Create a different file |
+| Replace | Replace the whole destination file |
+| Cancel | Leave the share unclaimed |
+
+Envshare refuses symlinks and special files as destinations. Writes are atomic,
+so an interrupted write does not leave a half-written `.env` file.
+
+## Use it in a script
+
+Read the code from standard input so it does not appear in the process list:
+
+```bash
+printf '%s\n' "$ENVSHARE_CODE" |
+  envshare receive --code-stdin --output .env.shared --mode create
+```
+
+For an existing destination, choose the behavior explicitly:
+
+```bash
+envshare receive --code-stdin --output .env --mode merge
+envshare receive --code-stdin --output .env --mode append-missing
+envshare receive --code-stdin --output .env --mode replace
+```
+
+<Warning>
+Do not retry a code to a second destination after Envshare says the file was
+written but delivery confirmation was lost. Check the first destination.
+</Warning>
+
+## Change the expiration
+
+The sender owns the share lifetime:
+
+```bash
+envshare send .env --expires 5m
+```
+
+Cancel the sender with <kbd>Ctrl</kbd>+<kbd>C</kbd>. A receiver cannot claim an
+expired or cancelled share.

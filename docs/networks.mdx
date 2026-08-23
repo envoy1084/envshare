@@ -1,0 +1,90 @@
+---
+title: "Networks"
+description: "Use Envshare's public node, diagnose connectivity, or add a private discovery and relay profile."
+keywords: ["envshare public node", "envshare network profile", "libp2p relay"]
+icon: "network"
+---
+
+## The public network
+
+`public` is built into every release and selected by default. It uses the
+authenticated node at `node.envshare.xyz` for discovery and relay, so ordinary
+transfers need no network flags:
+
+```bash
+envshare send .env
+envshare receive
+```
+
+Check it without sharing a real payload:
+
+```bash
+envshare doctor --verbose
+```
+
+## Switch between profiles
+
+```bash
+envshare network list
+envshare network show public
+envshare network use public
+```
+
+Select another profile for one command without changing the default:
+
+```bash
+envshare send .env --network team
+```
+
+Both peers must use profiles with the same `network_id`.
+
+## Add a private profile
+
+Create `team.toml` with the profile body:
+
+```toml
+network_id = "team"
+require_relay = true
+relay_only = true
+rendezvous = [
+  "/dns4/node.example.com/udp/4001/quic-v1/p2p/12D3KooW...",
+]
+relays = [
+  "/dns4/node.example.com/udp/4001/quic-v1/p2p/12D3KooW...",
+]
+```
+
+Then add and select it:
+
+```bash
+envshare network add team --file team.toml
+envshare network use team
+envshare doctor --network team --verbose
+```
+
+Configuration writes are atomic and private to the local user. Share codes and
+payload values are not valid configuration fields.
+
+## Direct local test
+
+You can test two terminals on one computer without a public node.
+
+In the first terminal:
+
+```bash
+envshare send .env --verbose --listen /ip4/127.0.0.1/tcp/0
+```
+
+Use the printed Peer ID, direct address, and share code in the second terminal:
+
+```bash
+envshare receive \
+  --peer PEER_ID \
+  --address MULTIADDR \
+  --output .env.received
+```
+
+<Note>
+Direct mode is mainly for testing and controlled networks. Internet transfers
+usually need NAT traversal or a relay.
+</Note>

@@ -1,0 +1,73 @@
+---
+title: "Install Envshare"
+description: "Install, verify, update, or remove the Envshare CLI on macOS, Linux, and Windows."
+keywords: ["install envshare", "envshare macOS", "envshare Linux", "envshare Windows"]
+icon: "download"
+---
+
+Envshare publishes signed release archives for macOS, Linux, and Windows.
+
+## macOS and Linux
+
+```bash
+curl -fsSL https://github.com/envoy1084/envshare/releases/latest/download/install.sh | sh
+```
+
+The installer places `envshare` in `$HOME/.local/bin`. If your shell cannot find
+it, add that directory to `PATH` and open a new terminal:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+To keep that change, add the same line to `~/.zshrc`, `~/.bashrc`, or the file
+your shell uses at startup.
+
+## Windows PowerShell
+
+```powershell
+$script = Invoke-RestMethod "https://github.com/envoy1084/envshare/releases/latest/download/install.ps1"
+& ([scriptblock]::Create($script))
+```
+
+The installer places `envshare.exe` in
+`%LOCALAPPDATA%\Programs\Envshare\bin`. Add that directory to your user `PATH`
+if it is not already there, then open a new PowerShell window.
+
+## Check the installation
+
+```bash
+envshare --version
+envshare doctor
+```
+
+`doctor` checks local file safety and tests the public discovery and relay node
+with disposable data. It never asks for a real share code.
+
+## Update
+
+Run the installer again. It downloads the latest published release and replaces
+the Envshare binary after verifying the archive checksum.
+
+## Remove
+
+<Tabs>
+  <Tab title="macOS and Linux">
+    ```bash
+    rm "$HOME/.local/bin/envshare"
+    ```
+  </Tab>
+  <Tab title="Windows">
+    ```powershell
+    Remove-Item "$env:LOCALAPPDATA\Programs\Envshare\bin\envshare.exe"
+    ```
+  </Tab>
+</Tabs>
+
+Envshare does not install a background service or store a permanent client
+identity. Removing the binary does not delete environment files you received.
+
+<Note>
+A hosted Homebrew tap is not available yet. Use the release installer or a
+download from the [GitHub releases page](https://github.com/envoy1084/envshare/releases).
+</Note>

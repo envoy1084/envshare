@@ -1,0 +1,81 @@
+---
+title: "Self-host a node"
+description: "Deploy and operate an Envshare discovery and relay node with Docker on a small public server."
+keywords: ["self host envshare", "envshare node Docker", "libp2p relay server"]
+icon: "server"
+---
+
+Most users should use the built-in public network. Self-host a node when you
+need your own availability boundary, hostname, or network profile.
+
+## Server requirements
+
+For a small deployment, start with:
+
+- 2 vCPU;
+- 2 GiB RAM;
+- 20 GiB disk;
+- Docker Engine with Compose;
+- a public IPv4 address; and
+- TCP and UDP port `4001` open.
+
+The operations endpoint on `127.0.0.1:9100` must stay private.
+
+## Deploy with Docker Compose
+
+Clone the repository on the server, then generate the node identity once:
+
+```bash
+docker compose -f deploy/docker/compose.yaml build
+docker compose -f deploy/docker/compose.yaml run --rm --no-deps node \
+  key generate --output /var/lib/envshare-node/identity.key
+docker compose -f deploy/docker/compose.yaml run --rm --no-deps node \
+  key inspect --identity /var/lib/envshare-node/identity.key
+```
+
+Record the Peer ID. Back up the identity key somewhere encrypted and offline;
+changing the key changes the Peer ID.
+
+Start the node:
+
+```bash
+docker compose -f deploy/docker/compose.yaml up -d
+docker compose -f deploy/docker/compose.yaml ps
+docker compose -f deploy/docker/compose.yaml logs --tail=100 node
+```
+
+## Open the firewall
+
+| Port | Protocol | Exposure | Use |
+| ---: | --- | --- | --- |
+| `22` | TCP | Your administration IPs only | SSH |
+| `4001` | TCP | Public | libp2p TCP |
+| `4001` | UDP | Public | libp2p QUIC |
+| `9100` | TCP | Loopback only | Health and metrics |
+
+Open both `4001/TCP` and `4001/UDP` in the provider firewall and host firewall.
+Do not put the raw libp2p port behind an HTTP reverse proxy.
+
+## Verify the node
+
+```bash
+docker compose -f deploy/docker/compose.yaml exec node \
+  envshare-node healthcheck --url http://127.0.0.1:9100/health/ready
+curl --fail http://127.0.0.1:9100/metrics
+```
+
+Then create a [network profile](/networks) with the public hostname and recorded
+Peer ID, and run `envshare doctor --network NAME --verbose` from another network.
+
+## Operate it safely
+
+- Back up the identity key and configuration, not relay traffic.
+- Keep the container image pinned to a release or digest.
+- Watch memory, connections, reservations, circuits, and rejection counts.
+- Stop the node cleanly so existing connections can drain.
+- Never log share codes, namespaces, peer addresses, or payload data.
+
+<Warning>
+A single node is one failure domain. If it is down, new transfers on that profile
+cannot discover or relay each other.
+</Warning>
