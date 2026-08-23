@@ -3,9 +3,6 @@
 name: Container release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       tag:
@@ -14,7 +11,7 @@ on:
         type: string
 
 concurrency:
-  group: container-release-${{ inputs.tag || github.ref_name }}
+  group: container-release-${{ inputs.tag }}
   cancel-in-progress: false
 
 permissions:
@@ -25,7 +22,7 @@ permissions:
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/envshare-node
-  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+  RELEASE_TAG: ${{ inputs.tag }}
 
 jobs:
   publish:

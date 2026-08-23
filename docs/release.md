@@ -22,9 +22,10 @@ targets. All project source and release metadata use Apache-2.0 only.
 5. Review the dry-run manifest. It must contain the client archives, Linux node
    archives, SHA-256 files, CycloneDX SBOMs, shell and PowerShell installers,
    Homebrew formula, source archive, and no node archives for macOS or Windows.
-6. Confirm the container workflow is valid. It publishes the node image for
-   `linux/amd64` and `linux/arm64`, attaches SBOM/provenance, and keylessly signs
-   the image index digest.
+6. When a release intentionally changes the node image, manually dispatch the
+   container workflow after the tag exists. It publishes `linux/amd64` and
+   `linux/arm64`, attaches SBOM/provenance, and keylessly signs the image index
+   digest. Client-only tags must not publish a node image.
 7. Create one annotated, signed tag matching the workspace version exactly, for
    example `v0.1.0`, and push only that tag after approval.
 
