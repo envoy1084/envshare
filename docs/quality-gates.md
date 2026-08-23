@@ -1,9 +1,9 @@
 # Release quality gates
 
-Envshare keeps its manually dispatched CI deliberately small. It runs formatting
-and a focused security-critical test subset on Ubuntu. The exhaustive and
-privileged checks below run locally for release candidates and are not scheduled
-or duplicated in CI.
+Envshare has no push or pull-request CI. The manual CLI release runs formatting,
+strict Clippy, version verification, and focused security-critical CLI and library
+tests before it can modify `main` or publish artifacts. The exhaustive and
+privileged checks below remain explicit local release-candidate gates.
 
 ## Required release-candidate gates
 

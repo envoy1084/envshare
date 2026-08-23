@@ -6,11 +6,10 @@ container image. All project source and release metadata use Apache-2.0 only.
 
 ## Release preparation
 
-1. Start from a reviewed, clean `main` commit with all required CI checks green.
-2. Update the workspace version, both first-party installer defaults, `Cargo.lock`,
-   and `CHANGELOG.md` in one release-preparation change.
-3. Run the [release quality gates](quality-gates.md); the manually dispatched
-   smoke workflow is not release-candidate evidence.
+1. Start from a reviewed `main` commit after completing the required local gates.
+2. Add user-facing notes under `Unreleased` in `CHANGELOG.md` when manual wording
+   is preferable to Conventional Commit summaries.
+3. Run any extended local gates required by [release quality gates](quality-gates.md).
 4. Install the exact dist version recorded in `Cargo.toml`, then run:
 
    ```console
@@ -26,10 +25,12 @@ container image. All project source and release metadata use Apache-2.0 only.
    container workflow after the tag exists. It publishes `linux/amd64` and
    `linux/arm64`, attaches SBOM/provenance, and keylessly signs the image index
    digest. Client-only tags must not publish a node image.
-7. Manually run the CLI release workflow with a tag matching the client version,
-   for example `v0.1.0`, after approval.
+7. Manually run the CLI release workflow from `main` and choose `patch`, `minor`,
+   or `major`. It runs focused qualification, prepares or resumes the version,
+   commits the synchronized bump, builds every target, creates the tag, attests
+   the artifacts, and publishes the GitHub release.
 
-The generated release workflow refuses partial publication: all target builds
+The CLI release workflow refuses partial publication: all target builds
 must succeed before its host job creates a release. It embeds auditable dependency
 metadata, publishes SHA-256 checksums and SBOMs, copies the first-party installers
 under stable names, signs every uploaded artifact with GitHub's keyless Sigstore
@@ -39,11 +40,17 @@ the public beta; the workflow does not attempt to change repository settings.
 
 ## CI and clean-machine evidence
 
-All three GitHub workflows are manual-only. The CI workflow runs one Ubuntu job
-containing formatting and the focused code, cryptography, and protocol tests.
-Clippy, documentation, cross-platform checks, dependency policy, installer tests,
-exhaustive tests, fuzzing, coverage, network emulation, and load or soak runs are
-performed locally as release gates rather than duplicated in CI.
+Both GitHub workflows are manual-only. The CLI release workflow runs formatting,
+strict Clippy, focused CLI/core/cryptography/protocol tests, version verification,
+and all five release builds. Rust dependencies are cached separately for release
+qualification and each build target. The container workflow uses scoped
+BuildKit layers and persistent Cargo cache mounts. Documentation, exhaustive
+tests, fuzzing, coverage, network emulation, and load or soak runs remain
+explicit local release gates.
+
+If publication fails after the prepared version reaches `main`, rerun the same
+workflow. An untagged prepared version is resumed rather than incremented again.
+Normal pushes to `main` never start either workflow.
 
 The harness intercepts only the network fetch and supplies a locally built archive
 with cargo-dist's exact layout. A release candidate must also run the published
@@ -67,8 +74,9 @@ Before announcing a release:
    architectures, through `install.ps1` on x64 Windows, and through the generated
    Homebrew formula on a clean supported macOS system.
 5. Run `envshare --version`, `envshare --help`, and a direct/TCP/relay acceptance
-   transfer on the installed binaries. Exercise `envshare-node config check`,
-   liveness, readiness, and graceful shutdown on each Linux node archive.
+   transfer on the installed binaries. When publishing a node image, exercise
+   `envshare-node config check`, liveness, readiness, and graceful shutdown on
+   both container architectures.
 6. Confirm release notes still identify the unaudited 0.x security boundary and do not
    describe the project as production-ready for secrets before independent review.
 

@@ -19,8 +19,8 @@ tests, documentation, and relevant verification commands pass.
       format.
 - [x] Add `README.md`, contribution guidance, the Apache 2.0 license, `SECURITY.md`, threat
       model, architecture overview, and protocol compatibility policy.
-- [x] Add pull-request CI for Linux, macOS, and Windows with formatting, Clippy,
-      tests, docs, dependency audit, and policy checks.
+- [x] Add manual-only, cached CLI and container release workflows, with focused
+      formatting, Clippy, test, packaging, attestation, and publication gates.
 
 ## Phase 1 — Capability, cryptography, protocol, and lifecycle
 

@@ -113,9 +113,9 @@ lto = "fat"
 
 [workspace.metadata.dist]
 # The generated release workflow is manually dispatched and publishes only the
-# CLI. Node distribution is handled by the container release workflow. Local CI
-# edits keep the workflow Apache-2.0-only, retain stable installer names, and fix
-# cargo-dist 0.32.0's CycloneDX output reference.
+# CLI. Node distribution is handled by the container release workflow. Local
+# workflow orchestration adds qualification, version preparation, caching, stable
+# installer names, and cargo-dist 0.32.0's CycloneDX output fix.
 allow-dirty = ["ci"]
 cargo-dist-version = "0.32.0"
 ci = ["github"]

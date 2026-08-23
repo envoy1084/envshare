@@ -98,9 +98,14 @@ shellcheck -s sh \
     scripts/qualify-published-transfer.sh \
     scripts/test-install.sh \
     scripts/release-check.sh
-yq eval '.' .github/workflows/ci.yml >/dev/null
 yq eval '.' .github/workflows/release.yml >/dev/null
 yq eval '.' .github/workflows/container-release.yml >/dev/null
+
+workflow_count=$(find .github/workflows -type f -name '*.yml' | wc -l | tr -d ' ')
+[ "$workflow_count" = 2 ] || {
+    printf '%s\n' "expected exactly two GitHub workflows" >&2
+    exit 1
+}
 
 if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoLogo -NoProfile -Command \
