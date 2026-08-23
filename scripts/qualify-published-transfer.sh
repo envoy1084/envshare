@@ -88,7 +88,8 @@ run_direct_case() {
     sender_error="$work_root/$transport.sender.err"
     printf '%s\n' "QUALIFICATION_${transport}=exact-private-value" > "$input"
 
-    "$client_bin" send "$input" --verbose --expires 30s --listen "$listen" \
+    "$client_bin" send "$input" --network qualification-direct --verbose \
+        --expires 30s --listen "$listen" \
         > "$sender_log" 2> "$sender_error" &
     sender_pid=$!
     wait_for_text "$sender_log" "Direct address: " "$sender_pid"
@@ -98,8 +99,9 @@ run_direct_case() {
     test -n "$code" && test -n "$peer" && test -n "$address"
 
     receiver_error="$work_root/$transport.receiver.err"
-    if ! "$client_bin" receive --code "$code" --peer "$peer" --address "$address" \
-        --output "$output" > "$work_root/$transport.receiver.log" \
+    if ! "$client_bin" receive --network qualification-direct --code "$code" \
+        --peer "$peer" --address "$address" --output "$output" \
+        > "$work_root/$transport.receiver.log" \
         2> "$receiver_error"; then
         report_safe_errors "$receiver_error" "$sender_error"
         return 1
