@@ -39,7 +39,7 @@ function Run-DirectCase([string]$Transport, [string]$Listen) {
     $SenderError = Join-Path $WorkRoot "$Transport.sender.err"
     [System.IO.File]::WriteAllText($InputPath, "QUALIFICATION_$Transport=exact-private-value`n")
     $script:Sender = Start-Process -FilePath $Binary -ArgumentList @(
-        "send", $InputPath, "--expires", "30s", "--listen", $Listen
+        "send", $InputPath, "--verbose", "--expires", "30s", "--listen", $Listen
     ) -RedirectStandardOutput $SenderLog -RedirectStandardError $SenderError -PassThru
     Wait-ForText $SenderLog "Direct address: " $script:Sender
     $Code = Get-ValueAfter $SenderLog "Share code: "

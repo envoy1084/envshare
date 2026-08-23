@@ -88,7 +88,7 @@ run_direct_case() {
     sender_error="$work_root/$transport.sender.err"
     printf '%s\n' "QUALIFICATION_${transport}=exact-private-value" > "$input"
 
-    "$client_bin" send "$input" --expires 30s --listen "$listen" \
+    "$client_bin" send "$input" --verbose --expires 30s --listen "$listen" \
         > "$sender_log" 2> "$sender_error" &
     sender_pid=$!
     wait_for_text "$sender_log" "Direct address: " "$sender_pid"
@@ -168,7 +168,7 @@ run_relay_case() {
     sender_log="$work_root/relay.sender.log"
     printf '%s\n' 'QUALIFICATION_RELAY=exact-private-value' > "$input"
 
-    "$client_bin" --config "$client_config" send "$input" --expires 30s --relay-only \
+    "$client_bin" --config "$client_config" send "$input" --verbose --expires 30s --relay-only \
         > "$sender_log" 2> "$work_root/relay.sender.err" &
     sender_pid=$!
     wait_for_text "$sender_log" "Relay address: " "$sender_pid"
