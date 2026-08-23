@@ -1,7 +1,7 @@
 //! Direct sender command.
 
 use std::io::Write as _;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use app_core::{CoreError, DirectSender, SenderActor, SenderState, select_dotenv};
 use code::ShareCode;
@@ -17,6 +17,8 @@ use zeroize::Zeroizing;
 use crate::{CliFailure, ExitCode, args::SendArgs};
 
 use super::shared::{RunningNetwork, read_sender_input, reserve_relays};
+
+const CONFIRMED_TRANSFER_DRAIN: Duration = Duration::from_millis(500);
 
 pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
     let expires = arguments.expires.ok_or_else(invalid_resolved_config)?;
@@ -77,6 +79,11 @@ pub(crate) async fn execute(arguments: SendArgs) -> Result<i32, CliFailure> {
         }
     };
     service_cancel.cancel();
+    if matches!(outcome, Ok(SenderState::Consumed)) {
+        // ResponseSent means the frame reached the negotiated stream. Keep the
+        // swarm alive briefly so a relayed stream can deliver it before teardown.
+        tokio::time::sleep(CONFIRMED_TRANSFER_DRAIN).await;
+    }
     stop_registration(registration.take()).await;
     running_network.stop().await?;
     let state = outcome?;
