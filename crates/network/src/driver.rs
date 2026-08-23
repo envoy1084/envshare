@@ -323,6 +323,10 @@ impl DiscoveryProvider for NetworkClient {
 
 impl NetworkClient {
     /// Removes one address from signed Rendezvous registrations without closing its listener.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the network driver has stopped.
     pub async fn remove_discovery_address(&self, address: Multiaddr) -> Result<(), NetworkError> {
         let (result, receiver) = oneshot::channel();
         self.send(Command::Discovery(DiscoveryCommand::RemoveAddress {
