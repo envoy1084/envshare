@@ -107,31 +107,6 @@ fn relay_peer_from_circuit(address: &network::Multiaddr) -> Option<PeerId> {
     None
 }
 
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr as _;
-
-    use super::*;
-
-    #[test]
-    fn canonical_route_uses_configured_public_endpoint_and_destination()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let relay_peer = PeerId::random();
-        let destination = PeerId::random();
-        let relay = network::DiscoveryNode::from_str(&format!(
-            "/dns4/node.envshare.xyz/tcp/4001/p2p/{relay_peer}"
-        ))?;
-
-        assert_eq!(
-            canonical_relay_route(&relay, destination).to_string(),
-            format!(
-                "/dns4/node.envshare.xyz/tcp/4001/p2p/{relay_peer}/p2p-circuit/p2p/{destination}"
-            )
-        );
-        Ok(())
-    }
-}
-
 impl RunningNetwork {
     pub fn new(cancellation: CancellationToken, task: JoinHandle<()>) -> Self {
         Self {
@@ -352,4 +327,29 @@ pub(crate) fn read_sender_input(path: &std::path::Path) -> Result<Vec<u8>, CliFa
         ));
     }
     read_bounded(file, protocol::MAX_PAYLOAD_BYTES).map_err(Into::into)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr as _;
+
+    use super::*;
+
+    #[test]
+    fn canonical_route_uses_configured_public_endpoint_and_destination()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let relay_peer = PeerId::random();
+        let destination = PeerId::random();
+        let relay = network::DiscoveryNode::from_str(&format!(
+            "/dns4/node.envshare.xyz/tcp/4001/p2p/{relay_peer}"
+        ))?;
+
+        assert_eq!(
+            canonical_relay_route(&relay, destination).to_string(),
+            format!(
+                "/dns4/node.envshare.xyz/tcp/4001/p2p/{relay_peer}/p2p-circuit/p2p/{destination}"
+            )
+        );
+        Ok(())
+    }
 }

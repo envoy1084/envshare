@@ -26,6 +26,12 @@ fn binary() -> &'static str {
     env!("CARGO_BIN_EXE_envshare")
 }
 
+fn network_command(subcommand: &str, network: &str) -> Command {
+    let mut command = Command::new(binary());
+    command.arg(subcommand).args(["--network", network]);
+    command
+}
+
 fn local_node_config() -> Result<NodeConfig, Box<dyn Error>> {
     Ok(NodeConfig {
         listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse()?],
@@ -458,11 +464,9 @@ fn federated_transfer_survives_two_of_three_nodes_unavailable() -> Result<(), Bo
     let input = directory.path().join("public.env");
     let output = directory.path().join("public.received.env");
     fs::write(&input, FEDERATED_PAYLOAD)?;
-    let mut sender = Command::new(binary())
-        .args(["send", input.to_str().ok_or("non-UTF-8 input path")?])
+    let mut sender = network_command("send", FEDERATED_TEST_NETWORK)
+        .arg(input.to_str().ok_or("non-UTF-8 input path")?)
         .args([
-            "--network",
-            FEDERATED_TEST_NETWORK,
             "--expires",
             "15s",
             "--discovery-node",
@@ -511,11 +515,8 @@ fn federated_transfer_survives_two_of_three_nodes_unavailable() -> Result<(), Bo
     let wrong_network_output = directory.path().join("wrong-network.env");
     assert_wrong_network_isolated(&code, &endpoint, &wrong_network_output)?;
 
-    let receiver = Command::new(binary())
+    let receiver = network_command("receive", FEDERATED_TEST_NETWORK)
         .args([
-            "receive",
-            "--network",
-            FEDERATED_TEST_NETWORK,
             "--code",
             &code,
             "--discovery-node",
