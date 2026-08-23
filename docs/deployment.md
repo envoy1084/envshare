@@ -65,10 +65,10 @@ cosign verify ghcr.io/envoy1084/envshare-node:0.1.2 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-After verification, resolve the published index digest with
-`docker buildx imagetools inspect ghcr.io/envoy1084/envshare-node:0.1.2` and pin
-`ghcr.io/envoy1084/envshare-node@sha256:...` in the deployment instead of relying
-on the mutable tag.
+The verified `v0.1.2` multi-platform index digest is
+`sha256:6123c0a804908647ccac859b0d665311afa9fec36390700e8e29efcd539b291b`.
+Pin `ghcr.io/envoy1084/envshare-node@sha256:6123c0a804908647ccac859b0d665311afa9fec36390700e8e29efcd539b291b`
+in the deployment instead of relying on the mutable tag.
 
 From the repository root:
 
