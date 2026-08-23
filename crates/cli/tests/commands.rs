@@ -112,7 +112,7 @@ fn completions_manpage_and_network_profiles_are_generated() -> Result<(), Box<dy
         .args(["network", "list"])
         .output()?;
     assert!(list.status.success());
-    assert_eq!(String::from_utf8(list.stdout)?, "lab\nother\n");
+    assert_eq!(String::from_utf8(list.stdout)?, "lab\nother\npublic\n");
     assert_private(&config)?;
     Ok(())
 }

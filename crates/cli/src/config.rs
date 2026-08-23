@@ -14,6 +14,8 @@ use crate::{
 const CONFIG_VERSION: u8 = 1;
 const MAX_NETWORKS: usize = 32;
 const MAX_NODES: usize = 8;
+const PUBLIC_NETWORK: &str = "public";
+const PUBLIC_NODE_PEER: &str = "12D3KooWQEMf5hojnFEucAQuUxDfcgrCRtSwpTLobzsT239vQeau";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
@@ -38,6 +40,7 @@ struct ClientDefaults {
 pub(crate) struct NetworkProfile {
     pub network_id: String,
     pub require_relay: bool,
+    pub relay_only: bool,
     pub rendezvous: Vec<String>,
     pub relays: Vec<String>,
 }
@@ -55,11 +58,13 @@ pub(crate) struct LoadedConfig {
 
 impl Default for ClientConfig {
     fn default() -> Self {
+        let mut networks = BTreeMap::new();
+        networks.insert(PUBLIC_NETWORK.to_owned(), public_network_profile());
         Self {
             version: CONFIG_VERSION,
-            default_network: "public-v1".to_owned(),
+            default_network: PUBLIC_NETWORK.to_owned(),
             defaults: ClientDefaults::default(),
-            networks: BTreeMap::new(),
+            networks,
         }
     }
 }
@@ -101,6 +106,7 @@ impl LoadedConfig {
             }
             Err(_) => return Err(invalid_config()),
         };
+        value.ensure_public_network();
         value.apply_environment()?;
         value.validate()?;
         Ok(Self { path, value })
@@ -146,6 +152,8 @@ impl ClientConfig {
                 arguments.discovery.relays = parse_nodes(&profile.relays)?;
             }
             arguments.discovery.require_relay |= profile.require_relay;
+            arguments.discovery.relay_only |= profile.relay_only;
+            arguments.network = Some(profile.network_id.clone());
         }
         arguments.discovery.require_relay |= arguments.discovery.relay_only;
         Ok(())
@@ -161,7 +169,12 @@ impl ClientConfig {
             &mut arguments.discovery.nodes,
             &mut arguments.discovery.mdns,
             &mut arguments.discovery.relay_only,
-        )
+        )?;
+        if let Some(profile) = self.networks.get(&network) {
+            arguments.discovery.relay_only |= profile.relay_only;
+            arguments.network = Some(profile.network_id.clone());
+        }
+        Ok(())
     }
 
     pub fn profile_names(&self) -> impl Iterator<Item = &str> {
@@ -231,6 +244,12 @@ impl ClientConfig {
         Ok(())
     }
 
+    fn ensure_public_network(&mut self) {
+        self.networks
+            .entry(PUBLIC_NETWORK.to_owned())
+            .or_insert_with(public_network_profile);
+    }
+
     fn apply_discovery(
         &self,
         network: &str,
@@ -278,6 +297,20 @@ impl ClientConfig {
             }
         }
         Ok(())
+    }
+}
+
+fn public_network_profile() -> NetworkProfile {
+    NetworkProfile {
+        network_id: PUBLIC_NETWORK.to_owned(),
+        require_relay: true,
+        relay_only: true,
+        rendezvous: vec![format!(
+            "/dns4/node.envshare.xyz/udp/4001/quic-v1/p2p/{PUBLIC_NODE_PEER}"
+        )],
+        relays: vec![format!(
+            "/dns4/node.envshare.xyz/tcp/4001/p2p/{PUBLIC_NODE_PEER}"
+        )],
     }
 }
 
@@ -373,6 +406,71 @@ mod tests {
 
     use super::*;
     use crate::args::{Cli, Command};
+
+    #[test]
+    fn builtin_public_network_requires_no_local_configuration()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let config = ClientConfig::default();
+        let mut cli = Cli::try_parse_from(["envshare", "send", "source.env"])?;
+        let Command::Send(arguments) = &mut cli.command else {
+            return Err("send command expected".into());
+        };
+
+        config.apply_send(arguments)?;
+
+        assert_eq!(arguments.network.as_deref(), Some(PUBLIC_NETWORK));
+        assert_eq!(arguments.discovery.nodes.len(), 1);
+        assert_eq!(arguments.discovery.relays.len(), 1);
+        assert!(arguments.discovery.relay_only);
+        assert!(arguments.discovery.require_relay);
+        assert_eq!(
+            arguments.discovery.nodes[0].peer.to_string(),
+            PUBLIC_NODE_PEER
+        );
+        assert_eq!(
+            arguments.discovery.relays[0].peer.to_string(),
+            PUBLIC_NODE_PEER
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn existing_configuration_keeps_its_default_and_gains_public_network()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut config: ClientConfig = toml::from_str(
+            "version = 1\ndefault_network = \"team\"\n\n[networks.team]\nnetwork_id = \"team-v1\"\n",
+        )?;
+
+        config.ensure_public_network();
+        config.validate()?;
+
+        assert_eq!(config.default_network, "team");
+        assert!(config.networks.contains_key("team"));
+        assert!(config.networks.contains_key(PUBLIC_NETWORK));
+        Ok(())
+    }
+
+    #[test]
+    fn profile_name_resolves_to_its_cryptographic_network_id()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut config = ClientConfig::default();
+        config.networks.insert(
+            "team".to_owned(),
+            NetworkProfile {
+                network_id: "team-v2".to_owned(),
+                ..NetworkProfile::default()
+            },
+        );
+        let mut cli = Cli::try_parse_from(["envshare", "send", "source.env", "--network", "team"])?;
+        let Command::Send(arguments) = &mut cli.command else {
+            return Err("send command expected".into());
+        };
+
+        config.apply_send(arguments)?;
+
+        assert_eq!(arguments.network.as_deref(), Some("team-v2"));
+        Ok(())
+    }
 
     #[test]
     fn explicit_cli_values_win_even_when_equal_to_builtin_defaults()
