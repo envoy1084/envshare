@@ -5,6 +5,28 @@ Versioning while the public interfaces remain experimental during `0.x`.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-23
+
+### Added
+
+- Embed the authenticated, relay-only `public` network so new installations can
+  send, receive, run, and diagnose through the Envshare node without creating a
+  profile or passing network flags.
+
+### Fixed
+
+- Publish canonical DNS relay circuit routes in signed Rendezvous registrations
+  so the public node accepts them and receivers can dial them.
+- Keep confirmed relay streams alive briefly enough to deliver the final
+  completion response before sender shutdown.
+- Bound installer release downloads with connection and total timeouts plus
+  retries, and document an attested GitHub CLI fallback.
+
+### Changed
+
+- Operate one conservatively limited public node for the initial launch and
+  document its single-failure-domain trade-off.
+
 ## [0.1.1] - 2026-08-22
 
 ### Fixed
@@ -45,6 +67,7 @@ Versioning while the public interfaces remain experimental during `0.x`.
   production-node soak. It is not described as production-ready for high-value
   secrets.
 
-[Unreleased]: https://github.com/envoy1084/envshare/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/envoy1084/envshare/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/envoy1084/envshare/releases/tag/v0.1.2
 [0.1.1]: https://github.com/envoy1084/envshare/releases/tag/v0.1.1
 [0.1.0]: https://github.com/envoy1084/envshare/releases/tag/v0.1.0
