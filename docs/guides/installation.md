@@ -11,7 +11,11 @@ Install Envshare from the official tap on macOS or Linux:
 brew install envoy1084/tap/envshare
 ```
 
-## macOS and Linux
+Homebrew manages future updates and removal of the installed binary.
+
+## Release installer
+
+On macOS or Linux:
 
 ```sh
 curl -fsSL https://github.com/envoy1084/envshare/releases/latest/download/install.sh | sh
@@ -61,12 +65,17 @@ Homebrew installations update with:
 brew upgrade envshare
 ```
 
-For installer-based installations, run the installer again. It downloads and
-verifies the latest release before replacing the installed binary.
+For installer-based installations, run the latest installer with `--force`. It
+downloads and verifies the release before replacing the existing binary:
+
+```sh
+curl -fsSL https://github.com/envoy1084/envshare/releases/latest/download/install.sh \
+  | sh -s -- --force
+```
 
 ## Uninstall
 
-macOS and Linux:
+Release installer on macOS or Linux:
 
 ```sh
 rm "$HOME/.local/bin/envshare"

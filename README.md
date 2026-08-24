@@ -19,15 +19,21 @@ does not provide anonymity.
 
 ## Installation
 
-Install the latest release on Linux or macOS:
+Install Envshare with Homebrew on macOS or Linux:
+
+```console
+brew install envoy1084/tap/envshare
+```
+
+Alternatively, use the release installer:
 
 ```console
 curl -fsSL https://github.com/envoy1084/envshare/releases/latest/download/install.sh | sh
 ```
 
-Windows PowerShell and explicit-location commands are documented in the
-[installation guide](docs/guides/installation.md). Release installers verify the
-archive SHA-256 before installing it and never prompt or edit shell profiles.
+Windows PowerShell, updates, and explicit-location commands are documented in
+the [installation guide](docs/guides/installation.md). Release installers verify
+the archive SHA-256 before installing it and never prompt or edit shell profiles.
 
 ## Commands
 
