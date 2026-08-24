@@ -375,3 +375,73 @@ jobs:
             --title "$ANNOUNCEMENT_TITLE" \
             --notes-file "$RUNNER_TEMP/notes.txt" \
             artifacts/*
+
+  publish-homebrew-formula:
+    name: Publish Homebrew formula
+    needs:
+      - plan
+      - host
+    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out Homebrew tap
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: envoy1084/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      - name: Download release artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: artifacts-*
+          path: release-artifacts
+          merge-multiple: true
+      - name: Prepare Homebrew formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f release-artifacts/envshare.rb
+          mkdir -p Formula
+          cp release-artifacts/envshare.rb Formula/envshare.rb
+
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("Formula/envshare.rb")
+          formula = path.read_text()
+          formula = re.sub(r'^  version "[^"]+"\n', "", formula, count=1, flags=re.MULTILINE)
+
+          if "\n  test do\n" not in formula:
+              if not formula.endswith("end\n"):
+                  raise SystemExit("generated formula has an unexpected ending")
+              formula = formula[:-4] + '''
+            test do
+              assert_match version.to_s, shell_output("#{bin}/envshare --version")
+            end
+          end
+          '''
+
+          path.write_text(formula)
+          PY
+
+          export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+          brew style --fix Formula/envshare.rb
+      - name: Commit and push formula
+        shell: bash
+        env:
+          VERSION: ${{ fromJson(needs.plan.outputs.val).announcement_tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/envshare.rb
+
+          if git diff --cached --quiet; then
+            echo "Homebrew formula is already current"
+            exit 0
+          fi
+
+          git commit -m "chore(homebrew): update envshare to ${VERSION}"
+          git push origin HEAD:main

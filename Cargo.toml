@@ -121,6 +121,8 @@ cargo-dist-version = "0.32.0"
 ci = ["github"]
 dispatch-releases = true
 packages = ["cli"]
+publish-jobs = ["homebrew"]
+tap = "envoy1084/homebrew-tap"
 targets = [
     "aarch64-apple-darwin",
     "aarch64-unknown-linux-gnu",
