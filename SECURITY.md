@@ -2,9 +2,8 @@
 
 ## Supported versions
 
-Envshare is pre-release software. No version is currently supported for
-production secret transfer. Supported release lines will be listed here before
-the first public beta.
+Security fixes are provided for the latest published release. Upgrade to the
+latest version before reporting a vulnerability that may already be resolved.
 
 ## Reporting a vulnerability
 
@@ -21,6 +20,6 @@ reporter when requested.
 ## Security expectations
 
 Envshare's intended properties and limitations are documented in
-[`docs/security.mdx`](docs/security.mdx). A share code is a bearer
+[`docs/guides/security.md`](docs/guides/security.md). A share code is a bearer
 capability: possession is authorization. A compromised sender or receiver is
 outside the protocol's protection.

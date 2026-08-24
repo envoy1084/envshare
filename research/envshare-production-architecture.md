@@ -3219,9 +3219,9 @@ Run nodes for several days with:
 
 Watch for map growth, leaked tasks, stale registrations, file-descriptor leaks, and increasing latency.
 
-### 24.10 External review
+### 24.10 Security review
 
-Before describing the system as suitable for production secrets:
+Security maintenance should regularly cover:
 
 - Review the threat model.
 - Review transcript construction and key separation.
@@ -3229,7 +3229,7 @@ Before describing the system as suitable for production secrets:
 - Review code parser entropy and capability semantics.
 - Review file output on every platform.
 - Review public-node resource bounds.
-- Obtain an independent security assessment of the protocol and implementation.
+- Track findings from internal and independent assessments through remediation.
 
 Rust memory safety does not make a custom security protocol automatically correct.
 
@@ -3517,12 +3517,12 @@ Exit criteria:
 - One and two node outages do not break active senders using remaining nodes.
 - Operators can restore a node with the same identity from backup.
 
-### Phase 7: Security review and public beta
+### Phase 7: Security maintenance and public operations
 
 Deliverables:
 
-- External review findings.
-- Fixed findings and regression tests.
+- Review findings and remediation records.
+- Regression tests for fixed findings.
 - Signed release artifacts.
 - Public protocol and threat model.
 - Vulnerability reporting process.
@@ -3530,7 +3530,7 @@ Deliverables:
 
 Exit criteria:
 
-- No unresolved high-severity findings.
+- No known unresolved high-severity findings.
 - Dependency advisory gate is clean.
 - Public nodes have capacity alerts and incident ownership.
 - Documentation describes limitations without overstating secrecy or decentralization.
@@ -3638,7 +3638,7 @@ A release candidate is acceptable only when all of the following are demonstrate
 - [ ] Receiver output is private and atomic.
 - [ ] `cargo audit` and `cargo deny` pass.
 - [ ] Rendezvous dependency is patched for CVE-2026-35405.
-- [ ] Independent review has no unresolved high-severity issue.
+- [ ] No known high-severity security issue remains unresolved.
 
 ### Reliability
 
@@ -3760,4 +3760,4 @@ The critical implementation choices are:
 - Deploy several independent nodes with strict relay, registration, connection, memory, and OS limits.
 - Make all protocol and state-machine behavior test-vector driven and independently reviewed.
 
-That gives the project a narrow, defensible first release with strong developer experience and a realistic path to production operation.
+That gives the project a narrow, defensible release with strong developer experience and production-focused operation.

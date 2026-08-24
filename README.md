@@ -4,9 +4,6 @@ Envshare is an accountless, one-time handoff for `.env` files and selected
 environment variables. The sender stays online while one receiver claims an
 end-to-end encrypted payload over libp2p.
 
-> **Status:** early implementation. The protocol and command-line interface are
-> not yet stable and this repository must not yet be used for production secrets.
-
 ## Product boundary
 
 - One sender, one receiver claim, and a short expiration.
@@ -29,7 +26,7 @@ curl -fsSL https://github.com/envoy1084/envshare/releases/latest/download/instal
 ```
 
 Windows PowerShell and explicit-location commands are documented in the
-[installation guide](docs/installation.mdx). Release installers verify the
+[installation guide](docs/guides/installation.md). Release installers verify the
 archive SHA-256 before installing it and never prompt or edit shell profiles.
 
 ## Commands
@@ -52,7 +49,7 @@ The sender reveals the capability only after the public node accepts its relay
 reservation and signed registration. The receiver discovers the sender and
 capability-authenticates it before accepting the encrypted payload. Network
 flags remain available for self-hosted profiles, explicit endpoints, and LAN
-use; see the [network guide](docs/networks.mdx).
+use; see the [network guide](docs/guides/networks.md).
 
 Explicit direct mode remains available:
 
@@ -84,13 +81,11 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for repository conventions and
 
 ## Documentation
 
-The Mintlify source lives in [`docs/`](docs/) and follows the normal user path:
+Documentation is plain Markdown under [`docs/`](docs/):
 
-- [Quickstart](docs/quickstart.mdx)
-- [Send and receive](docs/sharing.mdx)
-- [Security and privacy](docs/security.mdx)
-- [Troubleshooting](docs/troubleshooting.mdx)
-- [Self-host a node](docs/self-hosting.mdx)
+- [Guides](docs/guides/README.md)
+- [`envshare` reference](docs/reference/envshare.md)
+- [`envshare-node` reference](docs/reference/envshare-node.md)
 
 Protocol maintainers can also refer to the [protocol specification](protocol/protocol.md),
 [capability format](protocol/code-format.md), and [wire schema](protocol/messages.cddl).
