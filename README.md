@@ -89,6 +89,8 @@ Documentation is plain Markdown under [`docs/`](docs/):
 
 Protocol maintainers can also refer to the [protocol specification](protocol/protocol.md),
 [capability format](protocol/code-format.md), and [wire schema](protocol/messages.cddl).
+The proposed organization workspace is specified in the
+[Envshare v1 product and architecture document](research/envshare-v1.md).
 
 ## License
 

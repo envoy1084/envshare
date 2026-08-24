@@ -114,7 +114,7 @@ tests, documentation, and relevant verification commands pass.
       identity rotation, overload, abuse, and incident runbooks.
 - [x] Add load and multi-day soak harnesses and document tested capacity limits.
 
-## Phase 7 — Distribution, publishing, and public beta
+## Phase 7 — Distribution, publishing, and release operations
 
 - [x] Configure `cargo-dist` for signed archives/installers across supported Linux,
       macOS, and Windows architectures.
@@ -130,11 +130,10 @@ tests, documentation, and relevant verification commands pass.
       privacy, and security documentation.
 - [x] Run license, advisory, supply-chain, full-test, fuzz, coverage,
       cross-platform, NAT/TCP, overload, and release-candidate gates; record the
-      required evidence in `docs/maintainers.mdx`.
+      required evidence in release attestations and the changelog.
 
-Deployed soak operation and independent security review are release-maturity
-work owned outside this repository. They remain explicit limitations in the
-acceptance evidence and are not implementation completion tasks.
+Operational evidence maintained outside the repository is versioned alongside
+the corresponding deployment and release records.
 
 ## Final completion audit
 
