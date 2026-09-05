@@ -28,7 +28,7 @@ anyhow = "1.0.102"
 async-trait = "0.1.89"
 clap = { version = "4.6.0", features = ["derive", "wrap_help"] }
 clap_complete = "4.5.65"
-clap_mangen = "0.2.31"
+clap_mangen = "0.3.3"
 cliclack = "0.5.6"
 console = "0.16.4"
 code = { version = "=0.1.4", path = "crates/code" }
@@ -47,7 +47,7 @@ opentelemetry = { version = "0.32.0", default-features = false, features = ["tra
 opentelemetry-otlp = { version = "0.32.0", default-features = false, features = ["http-proto", "reqwest-blocking-client", "reqwest-rustls-webpki-roots", "trace"] }
 opentelemetry_sdk = { version = "0.32.1", default-features = false, features = ["trace"] }
 protocol = { version = "=0.1.4", path = "crates/protocol" }
-process-wrap = { version = "9.1.0", default-features = false, features = ["job-object", "kill-on-drop", "process-group", "tokio1"] }
+process-wrap = { version = "10.0.0", default-features = false, features = ["job-object", "kill-on-drop", "process-group", "tokio1"] }
 prost = "0.14.4"
 libp2p = { version = "0.56.0", default-features = false, features = [
     "dcutr",
@@ -75,7 +75,7 @@ thiserror = "2.0.18"
 tempfile = "3.27.0"
 tokio = { version = "1.53.0", features = ["io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
 tokio-util = { version = "0.7.18", features = ["rt"] }
-toml = "0.9.11"
+toml = "1.1.4"
 tracing = "0.1.44"
 tracing-opentelemetry = { version = "0.33.0", default-features = false }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt", "json"] }
